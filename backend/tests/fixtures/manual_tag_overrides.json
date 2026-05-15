@@ -1,0 +1,23 @@
+[
+  {
+    "card_name": "Sol Ring",
+    "add": ["RAMP"],
+    "remove": [],
+    "confidence_overrides": {"RAMP": 0.99},
+    "source": "manual"
+  },
+  {
+    "card_name": "Command Tower",
+    "add": ["MANA_FIXING"],
+    "remove": [],
+    "confidence_overrides": {"MANA_FIXING": 0.99},
+    "source": "manual"
+  },
+  {
+    "card_name": "Skullclamp",
+    "add": ["CARD_DRAW"],
+    "remove": [],
+    "confidence_overrides": {"CARD_DRAW": 0.95},
+    "source": "manual"
+  }
+]

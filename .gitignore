@@ -1,0 +1,8 @@
+.DS_Store
+node_modules/
+frontend/dist/
+backend/.venv/
+__pycache__/
+.pytest_cache/
+docs/
+!docs/SPEC.md

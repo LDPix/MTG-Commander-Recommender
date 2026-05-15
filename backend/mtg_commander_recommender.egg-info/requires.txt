@@ -1,0 +1,9 @@
+pydantic>=2.0
+pytest
+pytest-asyncio
+fastapi
+python-multipart
+sqlalchemy>=2.0
+asyncpg
+alembic
+httpx

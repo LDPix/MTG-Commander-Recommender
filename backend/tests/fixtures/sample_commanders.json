@@ -1,0 +1,47 @@
+[
+  {
+    "oracle_id": "4b2521bc-8f94-1a0b-c3d4-5e6f7a8b9c0d",
+    "name": "Meren of Clan Nel Toth",
+    "color_identity": ["B", "G"],
+    "archetype": "sacrifice/aristocrats",
+    "expected_quotas": {
+      "LAND": [36, 38],
+      "RAMP": [10, 12],
+      "CARD_DRAW": [10, 12],
+      "SPOT_REMOVAL": [6, 8],
+      "BOARD_WIPE": [2, 3],
+      "PROTECTION": [2, 5],
+      "WIN_CONDITION": [3, 8]
+    }
+  },
+  {
+    "oracle_id": "aa000082-0000-4000-0000-000000000082",
+    "name": "Atraxa, Praetors' Voice",
+    "color_identity": ["W", "U", "B", "G"],
+    "archetype": "proliferate/superfriends",
+    "expected_quotas": {
+      "LAND": [36, 38],
+      "RAMP": [10, 12],
+      "CARD_DRAW": [10, 12],
+      "SPOT_REMOVAL": [6, 8],
+      "BOARD_WIPE": [2, 3],
+      "PROTECTION": [2, 5],
+      "WIN_CONDITION": [3, 8]
+    }
+  },
+  {
+    "oracle_id": "aa000083-0000-4000-0000-000000000083",
+    "name": "Prossh, Skyraider of Kher",
+    "color_identity": ["B", "R", "G"],
+    "archetype": "sacrifice/tokens",
+    "expected_quotas": {
+      "LAND": [36, 38],
+      "RAMP": [10, 12],
+      "CARD_DRAW": [10, 12],
+      "SPOT_REMOVAL": [6, 8],
+      "BOARD_WIPE": [2, 3],
+      "PROTECTION": [2, 5],
+      "WIN_CONDITION": [3, 8]
+    }
+  }
+]

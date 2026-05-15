@@ -1,0 +1,64 @@
+{
+  "scenarios": [
+    {
+      "name": "aristocrats",
+      "collection_filename": "golden_aristocrats_collection.csv",
+      "expected_commander_names": ["Meren of Clan Nel Toth"],
+      "acceptable_rank_max": 3,
+      "deck_commander_name": "Meren of Clan Nel Toth",
+      "minimum_role_counts": {
+        "LAND": 30,
+        "RAMP": 6,
+        "CARD_DRAW": 5,
+        "SPOT_REMOVAL": 3
+      },
+      "minimum_owned_percentage": 0.25,
+      "expected_package_or_role_hints": [
+        "SACRIFICE_OUTLET",
+        "ARISTOCRATS_SYNERGY",
+        "RECURSION"
+      ],
+      "notes": "Golgari sacrifice and graveyard fixture. Expectations are tolerant so tests catch lost Meren support, broken roles, or missing package/explanation data without freezing an exact decklist."
+    },
+    {
+      "name": "landfall",
+      "collection_filename": "golden_landfall_collection.csv",
+      "expected_commander_names": ["Meren of Clan Nel Toth", "Atraxa, Praetors' Voice"],
+      "acceptable_rank_max": 4,
+      "deck_commander_name": "Meren of Clan Nel Toth",
+      "minimum_role_counts": {
+        "LAND": 30,
+        "RAMP": 7,
+        "CARD_DRAW": 4,
+        "TOKEN_MAKER": 2
+      },
+      "minimum_owned_percentage": 0.25,
+      "expected_package_or_role_hints": [
+        "LANDFALL_SYNERGY",
+        "TOKEN_MAKER",
+        "PAYOFF"
+      ],
+      "notes": "Green landfall/ramp fixture using the local sample catalog. Commander expectation allows the broader catalog-supported candidates while deck generation exercises landfall package cards."
+    },
+    {
+      "name": "spellslinger",
+      "collection_filename": "golden_spellslinger_collection.csv",
+      "expected_commander_names": ["Atraxa, Praetors' Voice"],
+      "acceptable_rank_max": 3,
+      "deck_commander_name": "Atraxa, Praetors' Voice",
+      "minimum_role_counts": {
+        "LAND": 30,
+        "RAMP": 6,
+        "CARD_DRAW": 5,
+        "SPOT_REMOVAL": 3
+      },
+      "minimum_owned_percentage": 0.25,
+      "expected_package_or_role_hints": [
+        "CARD_DRAW",
+        "SPOT_REMOVAL",
+        "PROTECTION"
+      ],
+      "notes": "Catalog-constrained noncreature/control fixture. It verifies multicolor commander ranking and spell-heavy role quality without claiming a complete production spellslinger card pool."
+    }
+  ]
+}

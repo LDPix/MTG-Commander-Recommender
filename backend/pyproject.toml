@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mtg-commander-recommender"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0",
+    "pytest",
+    "pytest-asyncio",
+    "fastapi",
+    "python-multipart",
+    "sqlalchemy>=2.0",
+    "asyncpg",
+    "alembic",
+    "httpx",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

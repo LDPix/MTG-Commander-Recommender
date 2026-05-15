@@ -1,0 +1,149 @@
+[
+  {
+    "card_a_oracle_id": "aa000056-0000-4000-0000-000000000056",
+    "card_b_oracle_id": "aa000057-0000-4000-0000-000000000057",
+    "weight": 0.85,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000056-0000-4000-0000-000000000056",
+    "card_b_oracle_id": "aa000059-0000-4000-0000-000000000059",
+    "weight": 0.80,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000056-0000-4000-0000-000000000056",
+    "card_b_oracle_id": "aa000058-0000-4000-0000-000000000058",
+    "weight": 0.78,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000057-0000-4000-0000-000000000057",
+    "card_b_oracle_id": "aa000059-0000-4000-0000-000000000059",
+    "weight": 0.82,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000057-0000-4000-0000-000000000057",
+    "card_b_oracle_id": "aa000058-0000-4000-0000-000000000058",
+    "weight": 0.75,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000051-0000-4000-0000-000000000051",
+    "card_b_oracle_id": "aa000059-0000-4000-0000-000000000059",
+    "weight": 0.70,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000051-0000-4000-0000-000000000051",
+    "card_b_oracle_id": "aa000056-0000-4000-0000-000000000056",
+    "weight": 0.68,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000052-0000-4000-0000-000000000052",
+    "card_b_oracle_id": "aa000057-0000-4000-0000-000000000057",
+    "weight": 0.72,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000054-0000-4000-0000-000000000054",
+    "card_b_oracle_id": "aa000056-0000-4000-0000-000000000056",
+    "weight": 0.65,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000060-0000-4000-0000-000000000060",
+    "card_b_oracle_id": "aa000057-0000-4000-0000-000000000057",
+    "weight": 0.88,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000068-0000-4000-0000-000000000068",
+    "card_b_oracle_id": "aa000069-0000-4000-0000-000000000069",
+    "weight": 0.75,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000068-0000-4000-0000-000000000068",
+    "card_b_oracle_id": "aa000079-0000-4000-0000-000000000079",
+    "weight": 0.70,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000068-0000-4000-0000-000000000068",
+    "card_b_oracle_id": "aa000078-0000-4000-0000-000000000078",
+    "weight": 0.72,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000069-0000-4000-0000-000000000069",
+    "card_b_oracle_id": "aa000079-0000-4000-0000-000000000079",
+    "weight": 0.68,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000069-0000-4000-0000-000000000069",
+    "card_b_oracle_id": "aa000080-0000-4000-0000-000000000080",
+    "weight": 0.62,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000078-0000-4000-0000-000000000078",
+    "card_b_oracle_id": "aa000081-0000-4000-0000-000000000081",
+    "weight": 0.55,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000062-0000-4000-0000-000000000062",
+    "card_b_oracle_id": "aa000063-0000-4000-0000-000000000063",
+    "weight": 0.65,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000062-0000-4000-0000-000000000062",
+    "card_b_oracle_id": "aa000064-0000-4000-0000-000000000064",
+    "weight": 0.60,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000063-0000-4000-0000-000000000063",
+    "card_b_oracle_id": "aa000066-0000-4000-0000-000000000066",
+    "weight": 0.70,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000064-0000-4000-0000-000000000064",
+    "card_b_oracle_id": "aa000065-0000-4000-0000-000000000065",
+    "weight": 0.55,
+    "metric": "fixture",
+    "sample_size": 0
+  },
+  {
+    "card_a_oracle_id": "aa000065-0000-4000-0000-000000000065",
+    "card_b_oracle_id": "aa000066-0000-4000-0000-000000000066",
+    "weight": 0.48,
+    "metric": "fixture",
+    "sample_size": 0
+  }
+]

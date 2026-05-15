@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /Users/nikitafadeev/Documents/MTG-Commander-Recommender/backend/app/db/migrations \\\\ *)",
+      "Bash(python -m pytest tests/unit/ -v)",
+      "Bash(pip install *)",
+      "Bash(pytest tests/unit/ -v)",
+      "Bash(python -m pytest tests/ -v --tb=short)",
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(python -m pytest tests/integration/test_collection_api.py -v)",
+      "Bash(pytest tests/ -v)",
+      "Bash(python -m pytest tests/unit/test_legality_validator.py -v)",
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(python -m pytest tests/unit/test_commander_pool.py tests/unit/test_commander_scorer.py tests/unit/test_commander_recommender.py -v)",
+      "Bash(python -m pytest tests/integration/test_recommendation_api.py -v)",
+      "Bash(python -m pytest --tb=no -q)",
+      "Bash(mkdir -p /Users/nikitafadeev/Documents/MTG-Commander-Recommender/docs/tasks)",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); print\\(json.dumps\\(data[:3], indent=2\\)\\)\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python -m pytest tests/ -x -q)",
+      "Bash(python -c ' *)",
+      "Bash(python -m pytest tests/unit/test_deck_candidate_pool.py tests/unit/test_deck_generator.py tests/unit/test_quota_config.py tests/unit/test_synergy_graph.py tests/unit/test_package_detector.py tests/unit/test_package_labeler.py -v)",
+      "Bash(python -m pytest tests/unit/test_deck_generator.py -v)",
+      "Bash(python -m pytest --tb=short -q)",
+      "Bash(python -m pytest tests/unit/test_deck_schema.py -v)",
+      "Bash(python -m pytest tests/integration/test_deck_generation_api.py -v)",
+      "Bash(python -m pytest --tb=no -q --collect-only)",
+      "Bash(python -m pytest --tb=no -v)"
+    ],
+    "additionalDirectories": [
+      "/Users/nikitafadeev/Documents/MTG-Commander-Recommender/backend/app/db",
+      "/Users/nikitafadeev/Documents/MTG-Commander-Recommender/docs"
+    ]
+  }
+}

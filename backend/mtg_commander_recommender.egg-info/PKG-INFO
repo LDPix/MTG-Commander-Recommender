@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: mtg-commander-recommender
+Version: 0.1.0
+Requires-Python: >=3.11
+Requires-Dist: pydantic>=2.0
+Requires-Dist: pytest
+Requires-Dist: pytest-asyncio
+Requires-Dist: fastapi
+Requires-Dist: python-multipart
+Requires-Dist: sqlalchemy>=2.0
+Requires-Dist: asyncpg
+Requires-Dist: alembic
+Requires-Dist: httpx
