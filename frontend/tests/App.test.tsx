@@ -2,13 +2,20 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import App from "../src/App";
-import type { GeneratedDeckResponse, RecommendationResponse } from "../src/types/api";
+import type {
+  GeneratedDeckResponse,
+  RecommendationResponse,
+  SavedDeckDetail,
+  SavedDeckListResponse
+} from "../src/types/api";
 
 const api = vi.hoisted(() => ({
   importCollection: vi.fn(),
   fetchRecommendations: vi.fn(),
   generateDeck: vi.fn(),
-  exportPlaintextDeck: vi.fn()
+  exportPlaintextDeck: vi.fn(),
+  fetchSavedDecks: vi.fn(),
+  fetchSavedDeckDetail: vi.fn()
 }));
 
 vi.mock("../src/api/client", () => api);
@@ -142,7 +149,66 @@ const deck: GeneratedDeckResponse = {
   }
 };
 
+// Saved deck fixtures use a DIFFERENT commander than `deck` above so
+// tests can detect source confusion (TC-FR-023-01).
+const savedDecksList: SavedDeckListResponse = {
+  decks: [
+    {
+      deck_id: "saved-deck-1",
+      session_id: "session-test",
+      commander_oracle_id: "atraxa-id",
+      commander_name: "Atraxa, Praetors' Voice",
+      created_at: "2024-01-01T00:00:00"
+    }
+  ]
+};
+
+const savedDeckDetail: SavedDeckDetail = {
+  deck_id: "saved-deck-1",
+  session_id: "session-test",
+  commander_oracle_id: "atraxa-id",
+  commander_name: "Atraxa, Praetors' Voice",
+  created_at: "2024-01-01T00:00:00",
+  deck: {
+    deck_id: "saved-deck-1",
+    session_id: "session-test",
+    commander: {
+      oracle_id: "atraxa-id",
+      name: "Atraxa, Praetors' Voice",
+      is_owned: true,
+      quantity: 1,
+      roles: ["COMMANDER"],
+      package_ids: [],
+      selection_reason: "Saved commander.",
+      synergy_score: 1
+    },
+    main_deck: [
+      {
+        oracle_id: "cultivate-saved",
+        name: "Cultivate",
+        is_owned: true,
+        quantity: 1,
+        roles: ["RAMP"],
+        package_ids: [],
+        selection_reason: "Saved ramp.",
+        synergy_score: 0.7
+      }
+    ],
+    role_breakdown: { RAMP: 1 },
+    quota_status: [],
+    package_breakdown: [],
+    warnings: [],
+    owned_count: 2,
+    owned_percentage: 1.0,
+    is_valid: true,
+    validation_errors: [],
+    upgrade_suggestions: [],
+    card_explanations: {}
+  }
+};
+
 beforeEach(() => {
+  vi.clearAllMocks();
   vi.stubGlobal("crypto", { randomUUID: () => "test-session-id" });
   api.importCollection.mockResolvedValue({
     collection_id: "collection-1",
@@ -169,6 +235,9 @@ beforeEach(() => {
     text: "Commander\n1 Meren of Clan Nel Toth\n\nMain Deck\n1 Skullclamp [missing]",
     warnings: []
   });
+  // Default: empty saved deck list so existing tests are not affected
+  api.fetchSavedDecks.mockResolvedValue({ decks: [] });
+  api.fetchSavedDeckDetail.mockResolvedValue(savedDeckDetail);
 });
 
 describe("frontend MVP flow", () => {
@@ -301,6 +370,135 @@ describe("frontend MVP flow", () => {
 
     const exportBox = await screen.findByLabelText("Plaintext deck export");
     expect((exportBox as HTMLTextAreaElement).value).toContain("Commander");
+  });
+});
+
+describe("saved deck flow", () => {
+  // TC-FR-019-01 / AT-FR-019-FE-01
+  test("test_saved_decks_list_shown_after_import", async () => {
+    api.fetchSavedDecks.mockResolvedValue(savedDecksList);
+    render(<App />);
+
+    await uploadAndImport();
+
+    expect(await screen.findByText("Saved decks")).toBeInTheDocument();
+    expect(await screen.findByText("Atraxa, Praetors' Voice")).toBeInTheDocument();
+  });
+
+  // TC-FR-019-02 / AT-FR-019-FE-02
+  test("test_saved_decks_empty_state_shown_when_no_saved_decks", async () => {
+    api.fetchSavedDecks.mockResolvedValue({ decks: [] });
+    render(<App />);
+
+    await uploadAndImport();
+
+    expect(await screen.findByText("Saved decks")).toBeInTheDocument();
+    expect(await screen.findByText("No saved decks yet.")).toBeInTheDocument();
+  });
+
+  // TC-FR-020-01 / AT-FR-020-FE-01
+  test("test_open_saved_deck_does_not_call_generate", async () => {
+    api.fetchSavedDecks.mockResolvedValue(savedDecksList);
+    render(<App />);
+
+    await uploadAndImport();
+    const openButton = await screen.findByRole("button", { name: "Open" });
+    await userEvent.click(openButton);
+
+    await waitFor(() => expect(api.fetchSavedDeckDetail).toHaveBeenCalled());
+    expect(api.generateDeck).not.toHaveBeenCalled();
+  });
+
+  // TC-FR-021-01 / AT-FR-021-FE-01
+  test("test_saved_deck_displays_saved_commander_and_card_list", async () => {
+    api.fetchSavedDecks.mockResolvedValue(savedDecksList);
+    render(<App />);
+
+    await uploadAndImport();
+    const openButton = await screen.findByRole("button", { name: "Open" });
+    await userEvent.click(openButton);
+
+    // Saved commander appears in deck viewer (Atraxa, not Meren)
+    expect(
+      await screen.findByRole("button", { name: /Atraxa, Praetors' Voice owned/ })
+    ).toBeInTheDocument();
+    // Saved main deck card appears
+    expect(screen.getByRole("button", { name: /Cultivate owned/ })).toBeInTheDocument();
+  });
+
+  // TC-FR-022-01 / AT-FR-022-FE-01
+  test("test_new_deck_shows_new_label_saved_deck_shows_saved_label", async () => {
+    api.fetchSavedDecks.mockResolvedValue(savedDecksList);
+    render(<App />);
+
+    // Generate a new deck → "New deck" label
+    await importAndGenerate();
+    expect(await screen.findByText("New deck")).toBeInTheDocument();
+
+    // Open a saved deck → "Saved deck" label
+    const openButton = screen.getByRole("button", { name: "Open" });
+    await userEvent.click(openButton);
+    expect(await screen.findByText("Saved deck")).toBeInTheDocument();
+    // "New deck" label must no longer be present once saved deck is opened
+    expect(screen.queryByText("New deck")).not.toBeInTheDocument();
+  });
+
+  // TC-FR-018-02 / AT-FR-018-FE-02
+  test("test_export_saved_deck_uses_existing_plaintext_format", async () => {
+    api.fetchSavedDecks.mockResolvedValue(savedDecksList);
+    api.exportPlaintextDeck.mockResolvedValue({
+      format: "plaintext",
+      text: "Commander\n1 Atraxa, Praetors' Voice\n\nMain Deck\n1 Cultivate",
+      warnings: []
+    });
+    render(<App />);
+
+    await uploadAndImport();
+    const openButton = await screen.findByRole("button", { name: "Open" });
+    await userEvent.click(openButton);
+
+    await userEvent.click(await screen.findByText("Export plaintext"));
+
+    const exportBox = await screen.findByLabelText("Plaintext deck export");
+    expect((exportBox as HTMLTextAreaElement).value).toContain("Atraxa");
+  });
+
+  // TC-FR-023-01 / AT-FR-023-FE-01
+  test("test_export_saved_deck_uses_saved_content_not_active_generated", async () => {
+    api.fetchSavedDecks.mockResolvedValue(savedDecksList);
+    render(<App />);
+
+    // Generate a Meren deck (the active generated deck)
+    await importAndGenerate();
+    await waitFor(() => expect(screen.getByText("New deck")).toBeInTheDocument());
+
+    // Open the Atraxa saved deck
+    const openButton = screen.getByRole("button", { name: "Open" });
+    await userEvent.click(openButton);
+    await waitFor(() => expect(screen.getByText("Saved deck")).toBeInTheDocument());
+
+    // Export — must use saved Atraxa deck, not active Meren deck
+    await userEvent.click(screen.getByText("Export plaintext"));
+    await waitFor(() => expect(api.exportPlaintextDeck).toHaveBeenCalled());
+
+    const lastCallArg = api.exportPlaintextDeck.mock.lastCall?.[0] as GeneratedDeckResponse;
+    expect(lastCallArg.commander.name).toBe("Atraxa, Praetors' Voice");
+    expect(lastCallArg.commander.oracle_id).toBe("atraxa-id");
+  });
+
+  // TC-FR-020-03 / AT-FR-020-FE-03
+  test("test_open_unknown_saved_deck_shows_error", async () => {
+    api.fetchSavedDecks.mockResolvedValue(savedDecksList);
+    api.fetchSavedDeckDetail.mockRejectedValue(new Error("Saved deck not found."));
+    render(<App />);
+
+    await uploadAndImport();
+    const openButton = await screen.findByRole("button", { name: "Open" });
+    await userEvent.click(openButton);
+
+    expect(await screen.findByText("Saved deck not found.")).toBeInTheDocument();
+    // No deck regeneration occurred
+    expect(api.generateDeck).not.toHaveBeenCalled();
   });
 });
 

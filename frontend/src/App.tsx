@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import {
   exportPlaintextDeck,
   fetchRecommendations,
+  fetchSavedDeckDetail,
+  fetchSavedDecks,
   generateDeck,
   importCollection
 } from "./api/client";
@@ -12,6 +14,7 @@ import type {
   DeckCard,
   GeneratedDeckResponse,
   RecommendationResponse,
+  SavedDeckSummary,
   UpgradePriority,
   UpgradeSuggestion
 } from "./types/api";
@@ -35,12 +38,15 @@ export default function App() {
   const [recommendations, setRecommendations] =
     useState<RecommendationResponse | null>(null);
   const [deck, setDeck] = useState<GeneratedDeckResponse | null>(null);
+  const [deckSource, setDeckSource] = useState<"new" | "saved" | null>(null);
+  const [savedDecks, setSavedDecks] = useState<SavedDeckSummary[]>([]);
   const [selectedCard, setSelectedCard] = useState<DeckCard | null>(null);
   const [exportText, setExportText] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingSaved, setIsLoadingSaved] = useState(false);
 
   async function handleImport() {
     if (!selectedFile) {
@@ -59,6 +65,12 @@ export default function App() {
       const nextRecommendations = await fetchRecommendations(result.session_id);
       setRecommendations(nextRecommendations);
       setStatus(`Found ${nextRecommendations.total} commander recommendations.`);
+      try {
+        const saved = await fetchSavedDecks(sessionId);
+        setSavedDecks(saved.decks);
+      } catch {
+        // Non-critical: saved deck list does not block import flow
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed.");
       setStatus("");
@@ -78,9 +90,16 @@ export default function App() {
         recommendation.oracle_id
       );
       setDeck(generatedDeck);
+      setDeckSource("new");
       setSelectedCard(generatedDeck.commander);
       setExportText("");
       setStatus(`Generated ${recommendation.name}.`);
+      try {
+        const saved = await fetchSavedDecks(sessionId);
+        setSavedDecks(saved.decks);
+      } catch {
+        // Non-critical: saved deck list refresh does not block deck generation flow
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Deck generation failed.");
     } finally {
@@ -100,6 +119,23 @@ export default function App() {
       setStatus("Plaintext export is ready.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Export failed.");
+    }
+  }
+
+  async function handleOpenSavedDeck(savedDeckId: string) {
+    setError("");
+    setIsLoadingSaved(true);
+    try {
+      const detail = await fetchSavedDeckDetail(savedDeckId, sessionId);
+      setDeck(detail.deck);
+      setDeckSource("saved");
+      setSelectedCard(detail.deck.commander);
+      setExportText("");
+      setStatus(`Opened saved deck: ${detail.commander_name}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load saved deck.");
+    } finally {
+      setIsLoadingSaved(false);
     }
   }
 
@@ -178,9 +214,23 @@ export default function App() {
         </section>
       </div>
 
-      {deck && (
+      {importResult && (
+        <section className="panel saved-decks-panel">
+          <div className="panel-heading">
+            <h2>Saved decks</h2>
+          </div>
+          <SavedDeckList
+            savedDecks={savedDecks}
+            isLoading={isLoadingSaved}
+            onOpenSavedDeck={handleOpenSavedDeck}
+          />
+        </section>
+      )}
+
+      {deck && deckSource && (
         <DeckViewer
           deck={deck}
+          deckSource={deckSource}
           selectedCard={selectedCard}
           selectedExplanation={selectedExplanation}
           exportText={exportText}
@@ -312,8 +362,39 @@ function RecommendationList({
   );
 }
 
+function SavedDeckList({
+  savedDecks,
+  isLoading,
+  onOpenSavedDeck
+}: {
+  savedDecks: SavedDeckSummary[];
+  isLoading: boolean;
+  onOpenSavedDeck: (id: string) => void;
+}) {
+  if (isLoading) {
+    return <p>Loading saved decks...</p>;
+  }
+  if (savedDecks.length === 0) {
+    return <p className="empty-state">No saved decks yet.</p>;
+  }
+  return (
+    <ul className="saved-deck-list">
+      {savedDecks.map((d) => (
+        <li key={d.deck_id} className="saved-deck-item">
+          <span className="saved-commander-name">{d.commander_name}</span>
+          <span className="saved-deck-date">
+            {new Date(d.created_at).toLocaleString()}
+          </span>
+          <button onClick={() => onOpenSavedDeck(d.deck_id)}>Open</button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function DeckViewer({
   deck,
+  deckSource,
   selectedCard,
   selectedExplanation,
   exportText,
@@ -321,6 +402,7 @@ function DeckViewer({
   onExportDeck
 }: {
   deck: GeneratedDeckResponse;
+  deckSource: "new" | "saved";
   selectedCard: DeckCard | null;
   selectedExplanation?: CardExplanation;
   exportText: string;
@@ -339,6 +421,9 @@ function DeckViewer({
           <div>
             <p className="step-label">3. Inspect</p>
             <h2>Deck viewer</h2>
+            <span className="deck-source-badge" data-source={deckSource}>
+              {deckSource === "saved" ? "Saved deck" : "New deck"}
+            </span>
           </div>
           <button onClick={onExportDeck}>Export plaintext</button>
         </div>

@@ -123,6 +123,20 @@ class CollectionService:
         """Return the Collection ORM object for *session_id*, or None."""
         return self._repo.get_collection_by_session(session_id)
 
+    def get_collection_with_items(
+        self, session_id: str
+    ) -> tuple[Collection, list[CollectionItem]] | None:
+        """Return the collection and its items for *session_id*, or None.
+
+        FR-5A: collection retrieval must go through a public service method;
+        API routes must not access private repository internals.
+        """
+        collection = self._repo.get_collection_by_session(session_id)
+        if collection is None:
+            return None
+        items = self._repo.get_items(collection.id)
+        return collection, items
+
 
 def _build_change_summary(
     previous_items: list[CollectionItem],

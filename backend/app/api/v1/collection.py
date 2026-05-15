@@ -91,12 +91,16 @@ def get_collection(
     session_id: str,
     service: CollectionService = Depends(_build_service),
 ) -> CollectionResponse:
-    """Retrieve the collection for a given session."""
-    collection = service.get_collection(session_id)
-    if collection is None:
+    """Retrieve the collection for a given session.
+
+    FR-5A: retrieval is delegated to CollectionService.get_collection_with_items;
+    this route does not access private service internals.
+    """
+    result = service.get_collection_with_items(session_id)
+    if result is None:
         raise HTTPException(status_code=404, detail="Collection not found.")
 
-    items = service._repo.get_items(collection.id)
+    collection, items = result
     return CollectionResponse(
         collection_id=collection.id,
         session_id=collection.session_id,

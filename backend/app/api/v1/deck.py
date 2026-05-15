@@ -1,7 +1,7 @@
 """Deck generation API endpoints (v1) — SC-API-003."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.v1.collection import _get_db_session, get_card_resolver
@@ -9,6 +9,7 @@ from app.data_pipeline.card_resolver import CardResolver
 from app.models.deck import GeneratedDeck
 from app.recommendation.deck_exporter import export_deck_to_plaintext
 from app.repositories.collection_repo import CollectionRepository
+from app.repositories.saved_deck_repo import SavedDeckRepository
 from app.schemas.deck_schema import (
     CardExplanationSchema,
     DeckCardSchema,
@@ -18,9 +19,12 @@ from app.schemas.deck_schema import (
     GeneratedDeckResponse,
     PackageSchema,
     QuotaStatusSchema,
+    SavedDeckDetailResponse,
+    SavedDeckListResponse,
     UpgradeSuggestionSchema,
 )
 from app.services.deck_generation_service import DeckGenerationService
+from app.services.saved_deck_service import SavedDeckService
 
 router = APIRouter()
 
@@ -30,6 +34,12 @@ def _build_service(
     resolver: CardResolver = Depends(get_card_resolver),
 ) -> DeckGenerationService:
     return DeckGenerationService(CollectionRepository(db), resolver)
+
+
+def _build_saved_deck_service(
+    db: Session = Depends(_get_db_session),
+) -> SavedDeckService:
+    return SavedDeckService(SavedDeckRepository(db))
 
 
 def _serialize(deck: GeneratedDeck) -> GeneratedDeckResponse:
@@ -115,8 +125,15 @@ def _serialize(deck: GeneratedDeck) -> GeneratedDeckResponse:
 def generate_deck(
     request: DeckGenerateRequest,
     service: DeckGenerationService = Depends(_build_service),
+    saved_deck_service: SavedDeckService = Depends(_build_saved_deck_service),
 ) -> GeneratedDeckResponse:
-    """Generate a Commander deck for the given session and commander."""
+    """Generate a Commander deck for the given session and commander.
+
+    FR-14, FR-15: On success, the generated deck is persisted as a saved
+    artifact associated with session_id and commander. The deck_id in the
+    response doubles as the saved deck id for retrieval.
+    NFR-12: response schema is backward-compatible; deck_id was already present.
+    """
     try:
         deck = service.generate_deck(request.session_id, request.commander_oracle_id)
     except ValueError as exc:
@@ -127,11 +144,47 @@ def generate_deck(
             status_code=404, detail="Collection not found for session"
         )
 
-    return _serialize(deck)
+    response = _serialize(deck)
+    saved_deck_service.save_generated_deck(response)
+    return response
+
+
+@router.get("/saved", response_model=SavedDeckListResponse)
+def list_saved_decks(
+    session_id: str = Query(..., description="Session id to list saved decks for"),
+    saved_deck_service: SavedDeckService = Depends(_build_saved_deck_service),
+) -> SavedDeckListResponse:
+    """List saved/generated deck summaries for a session.
+
+    FR-16, NFR-13: returns only decks belonging to the given session_id.
+    """
+    summaries = saved_deck_service.list_by_session(session_id)
+    return SavedDeckListResponse(decks=summaries)
+
+
+@router.get("/saved/{deck_id}", response_model=SavedDeckDetailResponse)
+def get_saved_deck(
+    deck_id: str,
+    session_id: str = Query(..., description="Session id for ownership verification"),
+    saved_deck_service: SavedDeckService = Depends(_build_saved_deck_service),
+) -> SavedDeckDetailResponse:
+    """Retrieve a saved/generated deck detail by id.
+
+    FR-17, NFR-13: retrieval is session-scoped — a deck saved under
+    session_a cannot be retrieved by providing session_b as the session_id.
+    """
+    detail = saved_deck_service.get_by_id_for_session(deck_id, session_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Saved deck not found.")
+    return detail
 
 
 @router.post("/export/plaintext", response_model=DeckExportResponse)
 def export_plaintext_deck(request: DeckExportRequest) -> DeckExportResponse:
-    """Format an already-generated deck payload as plaintext."""
+    """Format an already-generated deck payload as plaintext.
+
+    FR-18: export accepts the generated deck payload and does not require
+    saved deck persistence — deck_id is not needed for export.
+    """
     text, warnings = export_deck_to_plaintext(request.deck)
     return DeckExportResponse(text=text, warnings=warnings)

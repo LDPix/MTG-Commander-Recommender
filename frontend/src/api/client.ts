@@ -2,7 +2,9 @@ import type {
   CollectionImportResponse,
   DeckExportResponse,
   GeneratedDeckResponse,
-  RecommendationResponse
+  RecommendationResponse,
+  SavedDeckDetail,
+  SavedDeckListResponse
 } from "../types/api";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -59,6 +61,25 @@ export async function generateDeck(
   });
 
   return parseJson<GeneratedDeckResponse>(response);
+}
+
+export async function fetchSavedDecks(
+  sessionId: string
+): Promise<SavedDeckListResponse> {
+  const response = await fetch(
+    `${API_BASE}/api/v1/decks/saved?session_id=${encodeURIComponent(sessionId)}`
+  );
+  return parseJson<SavedDeckListResponse>(response);
+}
+
+export async function fetchSavedDeckDetail(
+  deckId: string,
+  sessionId: string
+): Promise<SavedDeckDetail> {
+  const response = await fetch(
+    `${API_BASE}/api/v1/decks/saved/${encodeURIComponent(deckId)}?session_id=${encodeURIComponent(sessionId)}`
+  );
+  return parseJson<SavedDeckDetail>(response);
 }
 
 export async function exportPlaintextDeck(

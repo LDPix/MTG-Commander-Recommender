@@ -1,6 +1,8 @@
 """Request and response schemas for deck generation (SC-API-003)."""
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, field_validator, model_validator
 
 
@@ -81,6 +83,33 @@ class GeneratedDeckResponse(BaseModel):
     validation_errors: list[str]
     upgrade_suggestions: list[UpgradeSuggestionSchema] = []
     card_explanations: dict[str, CardExplanationSchema] = {}
+
+
+class SavedDeckSummaryResponse(BaseModel):
+    """Summary of a persisted saved/generated deck (FR-16)."""
+
+    deck_id: str
+    session_id: str
+    commander_oracle_id: str
+    commander_name: str
+    created_at: datetime
+
+
+class SavedDeckDetailResponse(BaseModel):
+    """Full detail of a persisted saved/generated deck (FR-17)."""
+
+    deck_id: str
+    session_id: str
+    commander_oracle_id: str
+    commander_name: str
+    created_at: datetime
+    deck: GeneratedDeckResponse
+
+
+class SavedDeckListResponse(BaseModel):
+    """Envelope for saved deck summary list (FR-16)."""
+
+    decks: list[SavedDeckSummaryResponse]
 
 
 class DeckExportRequest(BaseModel):

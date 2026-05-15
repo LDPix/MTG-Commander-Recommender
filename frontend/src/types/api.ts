@@ -118,3 +118,24 @@ export interface DeckExportResponse {
   text: string;
   warnings: string[];
 }
+
+export interface SavedDeckSummary {
+  deck_id: string;
+  session_id: string;
+  commander_oracle_id: string;
+  commander_name: string;
+  created_at: string;
+}
+
+export interface SavedDeckListResponse {
+  decks: SavedDeckSummary[];
+}
+
+export interface SavedDeckDetail {
+  deck_id: string;
+  session_id: string;
+  commander_oracle_id: string;
+  commander_name: string;
+  created_at: string;
+  deck: GeneratedDeckResponse;
+}

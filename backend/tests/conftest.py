@@ -65,6 +65,7 @@ def _make_sqlite_engine():
     otherwise get its own isolated DB).
     """
     import app.models.collection  # noqa: F401 — register models with Base
+    import app.models.saved_deck  # noqa: F401 — register SavedDeck model with Base
 
     engine = create_engine(
         "sqlite://",

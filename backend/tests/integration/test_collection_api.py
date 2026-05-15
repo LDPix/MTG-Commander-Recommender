@@ -79,7 +79,13 @@ def test_import_api_is_user_scoped(api_client: TestClient) -> None:
 
 
 def test_get_collection_returns_items(api_client: TestClient) -> None:
-    """GET /collections/{session_id} returns stored items."""
+    """GET /collections/{session_id} returns stored items.
+
+    TC-FR-005A-02 / AT-FR-005A-INT-01 (FR-5A, NFR-3, NFR-4):
+    Regression baseline — response schema and field values must remain
+    identical after encapsulating retrieval behind a public service method.
+    TC-FR-001-01 regression baseline for import → retrieval response parity.
+    """
     session_id = "get-test-session"
     _upload(api_client, VALID_COLLECTION_CSV, session_id=session_id)
     resp = api_client.get(f"/api/v1/collections/{session_id}")
@@ -91,7 +97,11 @@ def test_get_collection_returns_items(api_client: TestClient) -> None:
 
 
 def test_get_collection_returns_404_for_unknown_session(api_client: TestClient) -> None:
-    """GET /collections/{session_id} returns 404 for a non-existent session."""
+    """GET /collections/{session_id} returns 404 for a non-existent session.
+
+    TC-FR-005A-02 / AT-FR-005A-INT-01 (FR-5A):
+    Missing collection must still return 404 after service boundary refactor.
+    """
     resp = api_client.get("/api/v1/collections/no-such-session-xyz")
     assert resp.status_code == 404
 
