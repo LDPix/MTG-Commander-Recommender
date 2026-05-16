@@ -246,3 +246,272 @@ def test_candidate_pool_respects_max_pool_size(meren: CardData, sample_cards: li
         max_pool_size=10,
     )
     assert len(pool) <= 10
+
+
+# ---------------------------------------------------------------------------
+# SC-MANA-005: Free regular basic land injection
+# ---------------------------------------------------------------------------
+
+def _basic_test_card(
+    oracle_id: str,
+    name: str,
+    color_identity: list[str],
+    type_line: str,
+    oracle_text: str = "",
+) -> CardData:
+    return CardData(
+        id=oracle_id,
+        oracle_id=oracle_id,
+        name=name,
+        color_identity=color_identity,
+        legalities={"commander": "legal"},
+        type_line=type_line,
+        oracle_text=oracle_text,
+        cmc=0.0,
+    )
+
+
+def test_forest_freely_injected_when_user_owns_zero_forests() -> None:
+    commander = _basic_test_card(
+        "cmd-green",
+        "Mono Green Commander",
+        ["G"],
+        "Legendary Creature — Elf",
+    )
+    forest = _basic_test_card(
+        "forest-oracle",
+        "Forest",
+        ["G"],
+        "Basic Land — Forest",
+        "({T}: Add {G}.)",
+    )
+    filler = [
+        _basic_test_card(f"filler-{i:02d}", f"Filler {i}", ["G"], "Creature")
+        for i in range(5)
+    ]
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, *filler, forest],
+        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids=set(),
+        max_pool_size=1,
+    )
+
+    forests = [card for card in pool if card.name == "Forest"]
+    assert len(forests) == 1
+    assert forests[0].is_owned is False
+
+
+def test_swamp_freely_injected_when_user_owns_zero_swamps() -> None:
+    commander = _basic_test_card(
+        "cmd-black",
+        "Mono Black Commander",
+        ["B"],
+        "Legendary Creature — Vampire",
+    )
+    swamp = _basic_test_card(
+        "swamp-oracle",
+        "Swamp",
+        ["B"],
+        "Basic Land — Swamp",
+        "({T}: Add {B}.)",
+    )
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, swamp],
+        role_tags={swamp.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids=set(),
+    )
+
+    assert any(card.name == "Swamp" and not card.is_owned for card in pool)
+
+
+def test_forest_not_injected_when_user_owns_at_least_one_forest() -> None:
+    commander = _basic_test_card(
+        "cmd-green",
+        "Mono Green Commander",
+        ["G"],
+        "Legendary Creature — Elf",
+    )
+    forest = _basic_test_card(
+        "forest-oracle",
+        "Forest",
+        ["G"],
+        "Basic Land — Forest",
+        "({T}: Add {G}.)",
+    )
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[forest],
+        all_cards=[commander, forest],
+        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids={forest.oracle_id},
+    )
+
+    forests = [card for card in pool if card.name == "Forest"]
+    assert len(forests) == 1
+    assert forests[0].is_owned is True
+
+
+def test_freely_injected_basic_is_marked_not_owned() -> None:
+    commander = _basic_test_card(
+        "cmd-green",
+        "Mono Green Commander",
+        ["G"],
+        "Legendary Creature — Elf",
+    )
+    forest = _basic_test_card(
+        "forest-oracle",
+        "Forest",
+        ["G"],
+        "Basic Land — Forest",
+        "({T}: Add {G}.)",
+    )
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, forest],
+        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids=set(),
+        max_pool_size=0,
+    )
+
+    injected_forest = next(card for card in pool if card.name == "Forest")
+    assert injected_forest.is_owned is False
+
+
+def test_snow_covered_forest_not_injected_when_not_owned() -> None:
+    commander = _basic_test_card(
+        "cmd-green",
+        "Mono Green Commander",
+        ["G"],
+        "Legendary Creature — Elf",
+    )
+    forest = _basic_test_card(
+        "forest-oracle",
+        "Forest",
+        ["G"],
+        "Basic Land — Forest",
+        "({T}: Add {G}.)",
+    )
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, forest],
+        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids=set(),
+        max_pool_size=0,
+    )
+
+    assert "Snow-Covered Forest" not in {card.name for card in pool}
+
+
+def test_basic_injection_uses_oracle_id_from_all_cards() -> None:
+    commander = _basic_test_card(
+        "cmd-green",
+        "Mono Green Commander",
+        ["G"],
+        "Legendary Creature — Elf",
+    )
+    forest = _basic_test_card(
+        "stable-forest-oracle",
+        "Forest",
+        ["G"],
+        "Basic Land — Forest",
+        "({T}: Add {G}.)",
+    )
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, forest],
+        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids=set(),
+        max_pool_size=0,
+    )
+
+    injected_forest = next(card for card in pool if card.name == "Forest")
+    assert injected_forest.oracle_id == "stable-forest-oracle"
+
+
+def test_c_activation_cost_card_excluded_when_not_enough_colorless_sources() -> None:
+    commander = _basic_test_card(
+        "cmd-green",
+        "Mono Green Commander",
+        ["G"],
+        "Legendary Creature — Elf",
+    )
+    forest = _basic_test_card(
+        "forest-oracle",
+        "Forest",
+        ["G"],
+        "Basic Land — Forest",
+        "({T}: Add {G}.)",
+    )
+    glaring_fleshraker = _basic_test_card(
+        "glaring-fleshraker",
+        "Glaring Fleshraker",
+        [],
+        "Creature — Eldrazi",
+        "{C}: Glaring Fleshraker gets +1/+1 until end of turn.",
+    )
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[glaring_fleshraker],
+        all_cards=[commander, forest, glaring_fleshraker],
+        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids={glaring_fleshraker.oracle_id},
+    )
+
+    assert glaring_fleshraker.oracle_id not in {card.oracle_id for card in pool}
+
+
+def test_c_activation_cost_card_does_not_count_as_colorless_source() -> None:
+    commander = _basic_test_card(
+        "cmd-green",
+        "Mono Green Commander",
+        ["G"],
+        "Legendary Creature — Elf",
+    )
+    forest = _basic_test_card(
+        "forest-oracle",
+        "Forest",
+        ["G"],
+        "Basic Land — Forest",
+        "({T}: Add {G}.)",
+    )
+    glaring_fleshraker = _basic_test_card(
+        "glaring-fleshraker",
+        "Glaring Fleshraker",
+        [],
+        "Creature — Eldrazi",
+        "{C}: Glaring Fleshraker gets +1/+1 until end of turn.",
+    )
+    eldrazi_confluence = _basic_test_card(
+        "eldrazi-confluence",
+        "Eldrazi Confluence",
+        [],
+        "Instant",
+        "Choose three. You may choose the same mode more than once.",
+    )
+    eldrazi_confluence.mana_cost = "{2}{C}"
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[glaring_fleshraker],
+        all_cards=[commander, forest, glaring_fleshraker, eldrazi_confluence],
+        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids={glaring_fleshraker.oracle_id},
+    )
+
+    pool_ids = {card.oracle_id for card in pool}
+    assert glaring_fleshraker.oracle_id not in pool_ids
+    assert eldrazi_confluence.oracle_id not in pool_ids

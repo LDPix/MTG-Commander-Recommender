@@ -21,6 +21,7 @@ class CommanderRecommendationSchema(BaseModel):
     owned_percentage: float
     explanation: ExplanationSchema
     roles_covered: dict[str, int]
+    support_confidence: str  # "curated" | "profiled" | "fallback" (SC-CMD-005)
 
 
 class RecommendationResponse(BaseModel):

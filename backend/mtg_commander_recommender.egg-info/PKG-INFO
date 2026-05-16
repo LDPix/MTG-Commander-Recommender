@@ -11,3 +11,6 @@ Requires-Dist: sqlalchemy>=2.0
 Requires-Dist: asyncpg
 Requires-Dist: alembic
 Requires-Dist: httpx
+Requires-Dist: uvicorn>=0.47.0
+Requires-Dist: aiosqlite>=0.22.1
+Requires-Dist: greenlet>=3.5.0

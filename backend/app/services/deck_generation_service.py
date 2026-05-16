@@ -14,7 +14,8 @@ from app.recommendation.package_detector import PackageDetector
 from app.recommendation.package_labeler import PackageLabeler
 from app.recommendation.quota_config import adjust_quotas_for_commander, BASELINE_QUOTAS as _BASELINE_QUOTAS
 from app.recommendation.role_taxonomy import RoleTag
-from app.recommendation.role_tagger import RuleTagger
+from app.data_pipeline.scryfall_tagger import get_scryfall_tagger_store
+from app.recommendation.role_tagger import HybridTagger
 from app.recommendation.synergy_graph import RoleTagSynergyProvider, SynergyGraph, SynergyDataProvider
 from app.recommendation.upgrade_suggester import UpgradeSuggester
 from app.repositories.collection_repo import CollectionRepository
@@ -34,6 +35,8 @@ def _canonical_to_card_data(canonical: CanonicalCard) -> CardData:
         keywords=canonical.keywords,
         card_faces=canonical.card_faces,
         layout=canonical.layout,
+        edhrec_rank=canonical.edhrec_rank,
+        rarity=canonical.rarity,
     )
 
 
@@ -46,7 +49,7 @@ class DeckGenerationService:
     ) -> None:
         self._repo = collection_repo
         self._resolver = card_resolver
-        self._tagger = RuleTagger()
+        self._tagger = HybridTagger(get_scryfall_tagger_store())
         self._synergy_provider = synergy_provider or RoleTagSynergyProvider()
 
     def generate_deck(

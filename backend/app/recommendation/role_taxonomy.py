@@ -34,6 +34,11 @@ class CardRole(str, Enum):
     ENABLER = "ENABLER"
     TRIBAL_LORD = "TRIBAL_LORD"
     WIN_CONDITION = "WIN_CONDITION"
+    LIFEGAIN = "LIFEGAIN"
+    STAX = "STAX"
+    COST_REDUCTION = "COST_REDUCTION"
+    COPY_EFFECT = "COPY_EFFECT"
+    GRAVEYARD_SYNERGY = "GRAVEYARD_SYNERGY"
 
 
 ROLE_DEFINITIONS: dict[CardRole, str] = {
@@ -132,6 +137,27 @@ ROLE_DEFINITIONS: dict[CardRole, str] = {
         "A card whose presence on the battlefield or resolution can end the "
         "game if left unanswered. Includes combo finishers, large threats, "
         "and alt-win conditions."
+    ),
+    CardRole.LIFEGAIN: (
+        "Gains life or rewards gaining life. Includes drain effects, "
+        "lifegain payoffs, and cards that scale with life totals."
+    ),
+    CardRole.STAX: (
+        "Restricts opponents' resources or actions. Includes tax effects, "
+        "hatebears, symmetrical punishers, and resource-denial permanents."
+    ),
+    CardRole.COST_REDUCTION: (
+        "Reduces the mana cost of spells or abilities. Includes cost reducers, "
+        "affinity enablers, and cards that grant free casts."
+    ),
+    CardRole.COPY_EFFECT: (
+        "Copies spells, abilities, or permanents. Includes forks, clones, "
+        "and doubling effects."
+    ),
+    CardRole.GRAVEYARD_SYNERGY: (
+        "Cares about or enables the graveyard. Includes self-mill, "
+        "discard outlets, flashback payoffs, and cards that reward a "
+        "stocked graveyard."
     ),
 }
 
@@ -287,6 +313,41 @@ ROLE_EXAMPLES: dict[CardRole, list[str]] = {
         "Torment of Hailfire",
         "Aetherflux Reservoir",
     ],
+    CardRole.LIFEGAIN: [
+        "Aetherflux Reservoir",
+        "Sanguine Bond",
+        "Vito, Thorn of the Dusk Rose",
+        "Oloro, Ageless Ascetic",
+        "Soul Warden",
+    ],
+    CardRole.STAX: [
+        "Rhystic Study",
+        "Smothering Tithe",
+        "Aura of Silence",
+        "Thalia, Guardian of Thraben",
+        "Archon of Emeria",
+    ],
+    CardRole.COST_REDUCTION: [
+        "Urza, Lord High Artificer",
+        "Goblin Electromancer",
+        "Baral, Chief of Compliance",
+        "Semblance Anvil",
+        "Cloud Key",
+    ],
+    CardRole.COPY_EFFECT: [
+        "Strionic Resonator",
+        "Lithoform Engine",
+        "Mirari",
+        "Irenicus's Vile Duplication",
+        "Phantasmal Image",
+    ],
+    CardRole.GRAVEYARD_SYNERGY: [
+        "Faithless Looting",
+        "Entomb",
+        "Buried Alive",
+        "Dredge",
+        "Underrealm Lich",
+    ],
 }
 
 
@@ -296,14 +357,14 @@ class RoleTag:
 
     role: CardRole
     confidence: float  # 0.0 – 1.0
-    source: Literal["rule_based", "manual", "external"]
+    source: Literal["rule_based", "manual", "external", "scryfall_tagger"]
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError(
                 f"confidence must be between 0.0 and 1.0, got {self.confidence}"
             )
-        if self.source not in ("rule_based", "manual", "external"):
+        if self.source not in ("rule_based", "manual", "external", "scryfall_tagger"):
             raise ValueError(
-                f"source must be 'rule_based', 'manual', or 'external', got {self.source!r}"
+                f"source must be one of 'rule_based', 'manual', 'external', 'scryfall_tagger', got {self.source!r}"
             )

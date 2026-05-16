@@ -241,3 +241,30 @@ class TestDeckExportSchemas:
 
         with pytest.raises(ValidationError):
             DeckExportRequest(deck=deck)
+
+
+class TestSCDeck008Lock:
+    """SC-DECK-008: Lock MVP deck profile — no power-level input, one profile."""
+
+    def test_deck_generation_request_has_no_power_level_requirement(self):
+        """Deck generation request must not require a power_level field (SC-DECK-008)."""
+        req = DeckGenerateRequest(session_id="s", commander_oracle_id="x")
+        assert not hasattr(req, "power_level") or getattr(req, "power_level", None) is None
+
+    def test_default_playable_profile_used_for_quotas(self):
+        """Deck generation uses BASELINE_QUOTAS without power-level input (SC-DECK-008)."""
+        from app.recommendation.quota_config import BASELINE_QUOTAS
+        from app.recommendation.role_taxonomy import CardRole
+
+        land_quota = next(q for q in BASELINE_QUOTAS if q.role == CardRole.LAND)
+        assert land_quota.target_min == 36
+        assert land_quota.target_max == 38
+
+    def test_baseline_quotas_covers_all_required_roles(self):
+        """BASELINE_QUOTAS defines all required MVP roles (SC-DECK-008)."""
+        from app.recommendation.quota_config import BASELINE_QUOTAS
+        from app.recommendation.role_taxonomy import CardRole
+
+        quota_roles = {q.role for q in BASELINE_QUOTAS}
+        required = {CardRole.LAND, CardRole.RAMP, CardRole.CARD_DRAW, CardRole.SPOT_REMOVAL}
+        assert required.issubset(quota_roles)

@@ -15,6 +15,7 @@ import type {
   GeneratedDeckResponse,
   RecommendationResponse,
   SavedDeckSummary,
+  SupportConfidence,
   UpgradePriority,
   UpgradeSuggestion
 } from "./types/api";
@@ -145,46 +146,74 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Commander Deck Recommender</p>
-          <h1>Collection to deck, in one working flow</h1>
+      <header className="page-header">
+        <div className="header-content">
+          <p className="header-eyebrow">Commander Deck Recommender</p>
+          <h1 className="header-title">Turn your collection into a playable deck</h1>
+          <p className="header-subtitle">
+            Import your collection, review best-fit commanders, and generate a
+            complete deck in minutes.
+          </p>
         </div>
-        <span className="session-pill">{sessionId}</span>
+        <span className="session-badge">{sessionId}</span>
       </header>
 
       {(status || error) && (
-        <section className="status-row" aria-live="polite">
-          {status && <p>{status}</p>}
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
+        <div aria-live="polite" className="alerts-area">
+          {status && (
+            <div className="alert alert--success">
+              <p>{status}</p>
+            </div>
           )}
-        </section>
+          {error && (
+            <div className="alert alert--error" role="alert">
+              <p>{error}</p>
+            </div>
+          )}
+        </div>
       )}
 
       <div className="workflow-grid">
-        <section className="panel">
-          <div className="panel-heading">
-            <p className="step-label">1. Import</p>
-            <h2>Collection CSV</h2>
+        <section className="surface-card">
+          <p className="section-label">Step 1</p>
+          <h2 className="section-title">Collection CSV</h2>
+          <p className="section-subtitle">Upload your card collection file to get started.</p>
+
+          <div className="file-upload-zone">
+            <input
+              aria-label="Collection CSV"
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(event) => {
+                setSelectedFile(event.target.files?.[0] ?? null);
+                setError("");
+              }}
+            />
+            <div className="file-upload-prompt">
+              {selectedFile ? (
+                <>
+                  <p className="file-selected-name">{selectedFile.name}</p>
+                  <p className="file-upload-hint">Ready to import</p>
+                </>
+              ) : (
+                <>
+                  <p className="file-upload-title">Choose a CSV file</p>
+                  <p className="file-upload-hint">or drag and drop</p>
+                </>
+              )}
+            </div>
           </div>
-          <input
-            aria-label="Collection CSV"
-            type="file"
-            accept=".csv,text/csv"
-            onChange={(event) => {
-              setSelectedFile(event.target.files?.[0] ?? null);
-              setError("");
-            }}
-          />
-          <div className="action-row">
-            <button onClick={handleImport} disabled={isImporting}>
+
+          <div className="btn-row">
+            <button
+              className="btn-primary"
+              onClick={handleImport}
+              disabled={isImporting}
+            >
               {isImporting ? "Importing..." : "Import collection"}
             </button>
             <button
-              className="secondary"
+              className="btn-secondary"
               onClick={() => {
                 setImportResult(null);
                 setRecommendations(null);
@@ -195,17 +224,17 @@ export default function App() {
                 setError("");
               }}
             >
-              Retry
+              Reset
             </button>
           </div>
+
           {importResult && <ImportSummary result={importResult} />}
         </section>
 
-        <section className="panel recommendations-panel">
-          <div className="panel-heading">
-            <p className="step-label">2. Recommend</p>
-            <h2>Ranked commanders</h2>
-          </div>
+        <section className="surface-card">
+          <p className="section-label">Step 2</p>
+          <h2 className="section-title">Ranked commanders</h2>
+          <p className="section-subtitle">Sorted by collection fit and archetype match.</p>
           <RecommendationList
             recommendations={recommendations?.recommendations ?? []}
             isGenerating={isGenerating}
@@ -215,10 +244,8 @@ export default function App() {
       </div>
 
       {importResult && (
-        <section className="panel saved-decks-panel">
-          <div className="panel-heading">
-            <h2>Saved decks</h2>
-          </div>
+        <section className="surface-card saved-decks-section">
+          <h2 className="section-title">Saved decks</h2>
           <SavedDeckList
             savedDecks={savedDecks}
             isLoading={isLoadingSaved}
@@ -327,39 +354,77 @@ function RecommendationList({
     <ol className="recommendation-list">
       {recommendations.map((recommendation, index) => (
         <li key={recommendation.oracle_id}>
-          <article className="recommendation-item">
-            <div>
-              <span className="rank">#{index + 1}</span>
-              <h3>{recommendation.name}</h3>
-              <p>{recommendation.explanation.summary}</p>
-              <div className="metric-row">
-                <span>Fit {(recommendation.fit_score * 100).toFixed(0)}%</span>
-                <span>Owned {recommendation.owned_count}</span>
-                <span>{recommendation.explanation.archetype_label}</span>
+          <article className={`commander-card${index === 0 ? " commander-card--best" : ""}`}>
+            <div className="commander-card-top">
+              <span className={`rank-badge${index === 0 ? " rank-badge--gold" : ""}`}>
+                #{index + 1}
+              </span>
+              <div className="commander-card-identity">
+                <h3 className="commander-name">{recommendation.name}</h3>
+                <div className="chip-row">
+                  {index === 0 && (
+                    <span className="best-match-tag">Best match</span>
+                  )}
+                  <span className="chip chip--green">
+                    {recommendation.explanation.archetype_label}
+                  </span>
+                  <span className="chip chip--gold">
+                    Fit {(recommendation.fit_score * 100).toFixed(0)}%
+                  </span>
+                  <span className="chip chip--neutral">
+                    {recommendation.owned_count} owned
+                  </span>
+                  <SupportConfidenceBadge confidence={recommendation.support_confidence} />
+                </div>
               </div>
-              {recommendation.explanation.owned_highlights.length > 0 && (
-                <p className="support-line">
-                  Owned support:{" "}
+            </div>
+
+            <p className="commander-summary">
+              {recommendation.explanation.summary}
+            </p>
+
+            {recommendation.explanation.owned_highlights.length > 0 && (
+              <div className="commander-detail-section">
+                <span className="detail-label">Top owned support</span>
+                <p className="detail-text">
                   {recommendation.explanation.owned_highlights.join(", ")}
                 </p>
-              )}
-              {recommendation.explanation.missing_core_notes.length > 0 && (
-                <p className="missing-line">
-                  Missing: {recommendation.explanation.missing_core_notes.join(", ")}
+              </div>
+            )}
+
+            {recommendation.explanation.missing_core_notes.length > 0 && (
+              <div className="commander-detail-section">
+                <span className="detail-label">Key missing cards</span>
+                <p className="detail-text detail-text--missing">
+                  {recommendation.explanation.missing_core_notes.join(", ")}
                 </p>
-              )}
+              </div>
+            )}
+
+            <div className="commander-cta">
+              <button
+                className="btn-primary"
+                onClick={() => onGenerateDeck(recommendation)}
+                disabled={isGenerating}
+              >
+                Generate deck
+              </button>
             </div>
-            <button
-              onClick={() => onGenerateDeck(recommendation)}
-              disabled={isGenerating}
-            >
-              Generate deck
-            </button>
           </article>
         </li>
       ))}
     </ol>
   );
+}
+
+function SupportConfidenceBadge({ confidence }: { confidence: SupportConfidence }) {
+  if (confidence === "curated") {
+    return <span className="chip chip--curated" aria-label="Curated recommendation">Curated</span>;
+  }
+  if (confidence === "profiled") {
+    return <span className="chip chip--profiled" aria-label="Profiled recommendation">Profiled</span>;
+  }
+  return null;
 }
 
 function SavedDeckList({
@@ -372,7 +437,7 @@ function SavedDeckList({
   onOpenSavedDeck: (id: string) => void;
 }) {
   if (isLoading) {
-    return <p>Loading saved decks...</p>;
+    return <p className="empty-state">Loading saved decks...</p>;
   }
   if (savedDecks.length === 0) {
     return <p className="empty-state">No saved decks yet.</p>;
@@ -385,7 +450,12 @@ function SavedDeckList({
           <span className="saved-deck-date">
             {new Date(d.created_at).toLocaleString()}
           </span>
-          <button onClick={() => onOpenSavedDeck(d.deck_id)}>Open</button>
+          <button
+            className="btn-secondary btn-sm"
+            onClick={() => onOpenSavedDeck(d.deck_id)}
+          >
+            Open
+          </button>
         </li>
       ))}
     </ul>
@@ -415,104 +485,113 @@ function DeckViewer({
   );
 
   return (
-    <section className="deck-grid">
-      <div className="panel deck-list-panel">
-        <div className="panel-heading deck-heading">
-          <div>
-            <p className="step-label">3. Inspect</p>
-            <h2>Deck viewer</h2>
-            <span className="deck-source-badge" data-source={deckSource}>
-              {deckSource === "saved" ? "Saved deck" : "New deck"}
-            </span>
+    <div className="deck-section">
+      <div className="deck-grid">
+        <div className="surface-card">
+          <div className="deck-panel-header">
+            <div>
+              <p className="section-label">Step 3</p>
+              <h2 className="section-title">Deck viewer</h2>
+              <span className="deck-source-badge" data-source={deckSource}>
+                {deckSource === "saved" ? "Saved deck" : "New deck"}
+              </span>
+            </div>
+            <button
+              className="btn-secondary btn-sm"
+              onClick={onExportDeck}
+            >
+              Export plaintext
+            </button>
           </div>
-          <button onClick={onExportDeck}>Export plaintext</button>
+
+          {exportText && (
+            <textarea
+              aria-label="Plaintext deck export"
+              className="export-box"
+              readOnly
+              value={exportText}
+            />
+          )}
+
+          <h3>Commander</h3>
+          <CardRow card={deck.commander} onSelectCard={onSelectCard} />
+
+          <h3>Main Deck</h3>
+          <div className="card-list">
+            {deck.main_deck.map((card) => (
+              <CardRow key={card.oracle_id} card={card} onSelectCard={onSelectCard} />
+            ))}
+          </div>
         </div>
 
-        <h3>Commander</h3>
-        <CardRow card={deck.commander} onSelectCard={onSelectCard} />
+        <aside className="analysis-stack">
+          <section className="surface-card">
+            <h2 className="section-title">Role breakdown</h2>
+            <dl className="breakdown-list">
+              {Object.entries(deck.role_breakdown).map(([role, count]) => (
+                <div key={role}>
+                  <dt>{role}</dt>
+                  <dd>{count}</dd>
+                </div>
+              ))}
+            </dl>
+            {deck.quota_status.length > 0 && (
+              <div className="warnings-list">
+                <h3>Quota warnings</h3>
+                {deck.quota_status.map((quota) => (
+                  <p
+                    key={quota.role}
+                    className={quota.is_satisfied ? "quota-ok" : "quota-warning"}
+                  >
+                    {quota.role}: {quota.actual_count}/{quota.target_min}-
+                    {quota.target_max}
+                    {quota.warning ? ` - ${quota.warning}` : ""}
+                  </p>
+                ))}
+              </div>
+            )}
+          </section>
 
-        <h3>Main Deck</h3>
-        <div className="card-list">
-          {deck.main_deck.map((card) => (
-            <CardRow key={card.oracle_id} card={card} onSelectCard={onSelectCard} />
-          ))}
-        </div>
+          <section className="surface-card">
+            <h2 className="section-title">Package breakdown</h2>
+            {deck.package_breakdown.length === 0 ? (
+              <p className="empty-state">No package clusters returned.</p>
+            ) : (
+              deck.package_breakdown.map((pkg) => (
+                <div className="package-row" key={pkg.package_id}>
+                  <div className="package-row-top">
+                    <strong>{pkg.label}</strong>
+                    <span>{(pkg.confidence * 100).toFixed(0)}%</span>
+                  </div>
+                  <p>{pkg.top_roles.join(", ") || "No dominant role"}</p>
+                </div>
+              ))
+            )}
+          </section>
 
-        {exportText && (
-          <textarea
-            aria-label="Plaintext deck export"
-            className="export-box"
-            readOnly
-            value={exportText}
-          />
-        )}
-      </div>
-
-      <aside className="analysis-stack">
-        <section className="panel">
-          <h2>Role breakdown</h2>
-          <dl className="breakdown-list">
-            {Object.entries(deck.role_breakdown).map(([role, count]) => (
-              <div key={role}>
-                <dt>{role}</dt>
-                <dd>{count}</dd>
+          <section className="surface-card">
+            <h2 className="section-title">Upgrade suggestions</h2>
+            {upgradePriorities.map((priority) => (
+              <div key={priority} className="upgrade-group">
+                <h3>{priority}</h3>
+                {groupedUpgrades[priority].length === 0 ? (
+                  <p className="empty-state">No {priority} upgrades.</p>
+                ) : (
+                  groupedUpgrades[priority].map((upgrade) => (
+                    <article key={upgrade.oracle_id} className="upgrade-item">
+                      <strong>{upgrade.name}</strong>
+                      <p>{upgrade.reason}</p>
+                    </article>
+                  ))
+                )}
               </div>
             ))}
-          </dl>
-          {deck.quota_status.length > 0 && (
-            <div className="warnings-list">
-              <h3>Quota warnings</h3>
-              {deck.quota_status.map((quota) => (
-                <p
-                  key={quota.role}
-                  className={quota.is_satisfied ? "quota-ok" : "quota-warning"}
-                >
-                  {quota.role}: {quota.actual_count}/{quota.target_min}-
-                  {quota.target_max}
-                  {quota.warning ? ` - ${quota.warning}` : ""}
-                </p>
-              ))}
-            </div>
-          )}
-        </section>
+          </section>
 
-        <section className="panel">
-          <h2>Package breakdown</h2>
-          {deck.package_breakdown.length === 0 ? (
-            <p className="empty-state">No package clusters returned.</p>
-          ) : (
-            deck.package_breakdown.map((pkg) => (
-              <div className="package-row" key={pkg.package_id}>
-                <strong>{pkg.label}</strong>
-                <span>{(pkg.confidence * 100).toFixed(0)}%</span>
-                <p>{pkg.top_roles.join(", ") || "No dominant role"}</p>
-              </div>
-            ))
-          )}
-        </section>
-
-        <section className="panel">
-          <h2>Upgrade suggestions</h2>
-          {upgradePriorities.map((priority) => (
-            <div key={priority} className="upgrade-group">
-              <h3>{priority}</h3>
-              {groupedUpgrades[priority].length === 0 ? (
-                <p className="empty-state">No {priority} upgrades.</p>
-              ) : (
-                groupedUpgrades[priority].map((upgrade) => (
-                  <article key={upgrade.oracle_id} className="upgrade-item">
-                    <strong>{upgrade.name}</strong>
-                    <p>{upgrade.reason}</p>
-                  </article>
-                ))
-              )}
-            </div>
-          ))}
-        </section>
-
-        <ExplanationPanel card={selectedCard} explanation={selectedExplanation} />
-      </aside>
-    </section>
+          <ExplanationPanel card={selectedCard} explanation={selectedExplanation} />
+        </aside>
+      </div>
+    </div>
   );
 }
 
@@ -544,8 +623,8 @@ function ExplanationPanel({
 }) {
   if (!card) {
     return (
-      <section className="panel">
-        <h2>Card explanation</h2>
+      <section className="surface-card">
+        <h2 className="section-title">Card explanation</h2>
         <p className="empty-state">Select a card to inspect why it was included.</p>
       </section>
     );
@@ -557,10 +636,12 @@ function ExplanationPanel({
     : card.package_ids;
 
   return (
-    <section className="panel explanation-panel">
-      <h2>Card explanation</h2>
-      <h3>{card.name}</h3>
-      <p>{explanation?.summary ?? card.selection_reason}</p>
+    <section className="surface-card">
+      <h2 className="section-title">Card explanation</h2>
+      <h3 className="explanation-card-name">{card.name}</h3>
+      <p className="explanation-summary">
+        {explanation?.summary ?? card.selection_reason}
+      </p>
       <p className={card.is_owned ? "owned-text" : "missing-text"}>
         {card.is_owned ? "Owned card" : "Missing card"}
       </p>

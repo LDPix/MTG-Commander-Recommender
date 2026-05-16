@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from app.data_pipeline.scryfall_ingest import load_scryfall_bulk_data
+from app.data_pipeline.scryfall_ingest import load_scryfall_bulk_data, parse_scryfall_card
 from app.models.card import CardData
 
 
@@ -81,3 +81,23 @@ def test_basic_land_is_loaded_correctly(cards_by_name: dict[str, CardData]) -> N
     assert forest.cmc == 0.0
     assert forest.mana_cost is None
     assert forest.is_commander_legal
+
+
+def test_card_metadata_contains_quality_fields_from_scryfall() -> None:
+    """Scryfall edhrec_rank and rarity are preserved when present."""
+    card = parse_scryfall_card(
+        {
+            "id": "quality-ingest-id",
+            "oracle_id": "quality-ingest-oracle",
+            "name": "Quality Ingest Test",
+            "type_line": "Instant",
+            "oracle_text": "Destroy target creature.",
+            "legalities": {"commander": "legal"},
+            "edhrec_rank": 1234,
+            "rarity": "uncommon",
+        }
+    )
+
+    assert card is not None
+    assert card.edhrec_rank == 1234
+    assert card.rarity == "uncommon"

@@ -1,10 +1,11 @@
 """Commander candidate pool builder (SC-CMD-001)."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from app.data_pipeline.card_resolver import CardResolver
 from app.models.card import CanonicalCard
+from app.recommendation.commander_profiles import SupportTier, get_support_tier
 
 
 @dataclass
@@ -16,6 +17,7 @@ class CandidateCommander:
     oracle_text: str | None
     cmc: float
     is_owned: bool
+    support_tier: SupportTier = field(default="fallback")
 
 
 class CommanderPool:
@@ -73,6 +75,7 @@ class CommanderPool:
                     oracle_text=card.oracle_text,
                     cmc=card.cmc,
                     is_owned=card.oracle_id in owned_oracle_ids,
+                    support_tier=get_support_tier(card.oracle_id),
                 )
             )
 

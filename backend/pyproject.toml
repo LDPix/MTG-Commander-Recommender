@@ -16,8 +16,14 @@ dependencies = [
     "asyncpg",
     "alembic",
     "httpx",
+    "uvicorn>=0.47.0",
+    "aiosqlite>=0.22.1",
+    "greenlet>=3.5.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.setuptools.packages.find]
+include = ["app*"]

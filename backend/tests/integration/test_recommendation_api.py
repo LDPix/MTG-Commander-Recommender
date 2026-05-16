@@ -58,3 +58,23 @@ class TestRecommendationAPI:
         r1 = api_client.get("/api/v1/recommendations/rec-session-det").json()
         r2 = api_client.get("/api/v1/recommendations/rec-session-det").json()
         assert r1 == r2
+
+    def test_recommendation_api_includes_support_confidence(self, api_client):
+        """Every recommendation includes a support_confidence field (SC-CMD-005)."""
+        _import_collection(api_client, "rec-session-conf-1")
+        resp = api_client.get("/api/v1/recommendations/rec-session-conf-1")
+        assert resp.status_code == 200
+        for rec in resp.json()["recommendations"]:
+            assert "support_confidence" in rec
+            assert rec["support_confidence"] in ("curated", "profiled", "fallback")
+
+    def test_support_confidence_returned_with_recommendation(self, api_client):
+        """Meren recommendation returns support_confidence='curated' (SC-CMD-005)."""
+        _import_collection(api_client, "rec-session-conf-2")
+        resp = api_client.get("/api/v1/recommendations/rec-session-conf-2")
+        assert resp.status_code == 200
+        recs = resp.json()["recommendations"]
+        meren_oracle = "4b2521bc-8f94-1a0b-c3d4-5e6f7a8b9c0d"
+        meren_recs = [r for r in recs if r["oracle_id"] == meren_oracle]
+        if meren_recs:
+            assert meren_recs[0]["support_confidence"] == "curated"

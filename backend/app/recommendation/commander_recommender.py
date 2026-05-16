@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from app.models.card import CardData
 from app.models.score_log import DATA_VERSION, ScoreLog
 from app.recommendation.commander_pool import CandidateCommander, CommanderPool
+from app.recommendation.commander_profiles import SupportTier
 from app.recommendation.commander_scorer import CommanderFitScore, CommanderScorer
 from app.recommendation.legality_validator import LegalityValidator
 from app.recommendation.role_taxonomy import CardRole
@@ -48,6 +49,7 @@ class CommanderRecommendation:
     owned_percentage: float
     explanation: CommanderExplanation
     roles_covered: dict[str, int]
+    support_tier: SupportTier = "fallback"
     score_log: ScoreLog | None = None
 
 
@@ -94,6 +96,7 @@ class CommanderRecommender:
                     owned_percentage=score.owned_percentage,
                     explanation=explanation,
                     roles_covered=score.roles_covered,
+                    support_tier=candidate.support_tier,
                     score_log=self._score_log(
                         session_id=session_id,
                         subject_id=candidate.oracle_id,

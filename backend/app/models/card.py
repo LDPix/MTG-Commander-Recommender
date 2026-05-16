@@ -43,6 +43,8 @@ class CardData(BaseModel):
     card_faces: list[CardFace] | None = None
     layout: str = "normal"
     prints_search_uri: str | None = None
+    edhrec_rank: int | None = None
+    rarity: str | None = None
 
     @property
     def is_basic_land(self) -> bool:
@@ -99,6 +101,8 @@ class CanonicalCard(BaseModel):
     card_faces: list[CardFace] | None = None
     layout: str = "normal"
     is_basic_land: bool = False
+    edhrec_rank: int | None = None
+    rarity: str | None = None
 
     @classmethod
     def from_card_data(cls, card: CardData) -> "CanonicalCard":
@@ -116,4 +120,6 @@ class CanonicalCard(BaseModel):
             card_faces=card.card_faces,
             layout=card.layout,
             is_basic_land=card.is_basic_land,
+            edhrec_rank=card.edhrec_rank,
+            rarity=card.rarity,
         )

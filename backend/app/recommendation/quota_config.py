@@ -15,6 +15,9 @@ class RoleQuota:
     adjustment_reason: str = ""
 
 
+# SC-DECK-008: MVP uses this single default_playable profile.
+# No user-facing power-level selector is exposed in MVP.
+# Future profiles must be documented and regression-tested before activation.
 BASELINE_QUOTAS: list[RoleQuota] = [
     RoleQuota(CardRole.LAND,          36, 38),
     RoleQuota(CardRole.RAMP,          10, 12),

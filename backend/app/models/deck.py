@@ -20,6 +20,7 @@ class DeckCard(BaseModel):
     is_owned: bool
     quantity: int = 1  # >1 only for basic lands
     roles: list[str]
+    color_identity: list[str] = Field(default_factory=list)
     package_ids: list[str] = Field(default_factory=list)
     selection_reason: str = ""
     synergy_score: float = 0.0

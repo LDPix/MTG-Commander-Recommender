@@ -10,7 +10,8 @@ from app.recommendation.commander_recommender import (
     CommanderRecommender,
 )
 from app.recommendation.commander_scorer import CommanderScorer
-from app.recommendation.role_tagger import RuleTagger
+from app.data_pipeline.scryfall_tagger import get_scryfall_tagger_store
+from app.recommendation.role_tagger import HybridTagger
 from app.repositories.collection_repo import CollectionRepository
 
 
@@ -29,6 +30,8 @@ def _canonical_to_card_data(canonical: CanonicalCard) -> CardData:
         keywords=canonical.keywords,
         card_faces=canonical.card_faces,
         layout=canonical.layout,
+        edhrec_rank=canonical.edhrec_rank,
+        rarity=canonical.rarity,
     )
 
 
@@ -44,7 +47,7 @@ class RecommendationService:
         self._resolver = card_resolver
         self._recommender = CommanderRecommender(
             pool=CommanderPool(card_resolver),
-            scorer=CommanderScorer(RuleTagger()),
+            scorer=CommanderScorer(HybridTagger(get_scryfall_tagger_store())),
         )
 
     def get_recommendations(

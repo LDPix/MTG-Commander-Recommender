@@ -51,6 +51,8 @@ def parse_scryfall_card(raw: dict[str, Any]) -> CardData | None:
             card_faces=card_faces,
             layout=raw.get("layout", "normal"),
             prints_search_uri=raw.get("prints_search_uri"),
+            edhrec_rank=raw.get("edhrec_rank"),
+            rarity=raw.get("rarity"),
         )
     except (KeyError, TypeError, ValueError):
         return None

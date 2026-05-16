@@ -54,6 +54,7 @@ def get_recommendations(
                     missing_core_notes=r.explanation.missing_core_notes,
                 ),
                 roles_covered=r.roles_covered,
+                support_confidence=r.support_tier,
             )
             for r in recs
         ],

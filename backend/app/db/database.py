@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/mtg_recommender",
+    "sqlite+aiosqlite:///./mtg_recommender.db",
 )
 
 

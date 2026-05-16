@@ -86,6 +86,31 @@ _PROTECTION_GRANT_RE = re.compile(
 _BASIC_LAND_TYPES = frozenset({"Plains", "Island", "Swamp", "Mountain", "Forest"})
 
 
+class HybridTagger:
+    """Combines RuleTagger with an optional ScryfallTaggerStore.
+
+    Falls back to rule-based only when no store is provided or the store
+    has no entry for the card's oracle_id.
+    """
+
+    def __init__(self, scryfall_store=None) -> None:
+        self._rule_tagger = RuleTagger()
+        self._store = scryfall_store  # ScryfallTaggerStore | None
+
+    def tag(self, card: "CardData") -> "list[RoleTag]":
+        rule_tags = self._rule_tagger.tag(card)
+        if self._store is None:
+            return rule_tags
+        scryfall_tags = self._store.get_roles(card.oracle_id)
+        if not scryfall_tags:
+            return rule_tags
+        merged = {t.role: t for t in rule_tags}
+        for t in scryfall_tags:
+            if t.role not in merged or t.confidence > merged[t.role].confidence:
+                merged[t.role] = t
+        return list(merged.values())
+
+
 class RuleTagger:
     """Assigns role tags to cards using rule-based heuristics.
 

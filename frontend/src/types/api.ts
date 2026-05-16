@@ -26,6 +26,8 @@ export interface Explanation {
   missing_core_notes: string[];
 }
 
+export type SupportConfidence = "curated" | "profiled" | "fallback";
+
 export interface CommanderRecommendation {
   oracle_id: string;
   name: string;
@@ -36,6 +38,7 @@ export interface CommanderRecommendation {
   owned_percentage: number;
   explanation: Explanation;
   roles_covered: Record<string, number>;
+  support_confidence: SupportConfidence;
 }
 
 export interface RecommendationResponse {

@@ -4,7 +4,11 @@
     "oracle_id": "a2e91c27-6f81-4512-bf20-7a01cb7b6a8e",
     "name": "Sol Ring",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "restricted"},
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "restricted"
+    },
     "type_line": "Artifact",
     "oracle_text": "{T}: Add {C}{C}.",
     "mana_cost": "{1}",
@@ -19,7 +23,11 @@
     "oracle_id": "2bc3af81-7d7d-4e3f-a0e8-8d50f9c99c7d",
     "name": "Command Tower",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Land",
     "oracle_text": "{T}: Add one mana of any color in your commander's color identity.",
     "mana_cost": null,
@@ -33,8 +41,14 @@
     "id": "2e8f0a41-2b3c-4d5e-9f0a-1b2c3d4e5f6a",
     "oracle_id": "7aebf4a5-1e2d-4f3a-b6c7-8d9e0f1a2b3c",
     "name": "Swords to Plowshares",
-    "color_identity": ["W"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "W"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Instant",
     "oracle_text": "Exile target creature. Its controller gains life equal to its power.",
     "mana_cost": "{W}",
@@ -48,8 +62,14 @@
     "id": "3f9a1b52-3c4d-5e6f-0a1b-2c3d4e5f6a7b",
     "oracle_id": "8bcef5b6-2f3e-5a4b-c7d8-9e0f1a2b3c4d",
     "name": "Wrath of God",
-    "color_identity": ["W"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "W"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Destroy all creatures. They can't be regenerated.",
     "mana_cost": "{2}{W}{W}",
@@ -64,12 +84,18 @@
     "oracle_id": "9cdf06c7-3a4f-6b5c-d8e9-0f1a2b3c4d5e",
     "name": "Skullclamp",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Artifact — Equipment",
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Artifact \u2014 Equipment",
     "oracle_text": "Equipped creature gets +1/-1.\nWhenever equipped creature dies, draw two cards.\nEquip {1}",
     "mana_cost": "{1}",
     "cmc": 1.0,
-    "keywords": ["Equip"],
+    "keywords": [
+      "Equip"
+    ],
     "card_faces": null,
     "layout": "normal",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A9cdf06c7-3a4f-6b5c-d8e9-0f1a2b3c4d5e&unique=prints"
@@ -78,8 +104,14 @@
     "id": "5b1c3d74-5e6f-7a8b-2c3d-4e5f6a7b8c9d",
     "oracle_id": "0de107d8-4b50-7c6d-e9f0-1a2b3c4d5e6f",
     "name": "Cultivate",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
     "mana_cost": "{2}{G}",
@@ -93,9 +125,15 @@
     "id": "6c2d4e85-6f7a-8b9c-3d4e-5f6a7b8c9d0e",
     "oracle_id": "1ef208e9-5c61-8d7e-f0a1-2b3c4d5e6f7a",
     "name": "Forest",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "legal", "vintage": "legal"},
-    "type_line": "Basic Land — Forest",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "legal",
+      "vintage": "legal"
+    },
+    "type_line": "Basic Land \u2014 Forest",
     "oracle_text": "({T}: Add {G}.)",
     "mana_cost": null,
     "cmc": 0.0,
@@ -109,12 +147,18 @@
     "oracle_id": "2f0309fa-6d72-9e8f-a1b2-3c4d5e6f7a8b",
     "name": "Lightning Greaves",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Artifact — Equipment",
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Artifact \u2014 Equipment",
     "oracle_text": "Equipped creature has haste and shroud.\nEquip {0}",
     "mana_cost": "{2}",
     "cmc": 2.0,
-    "keywords": ["Equip"],
+    "keywords": [
+      "Equip"
+    ],
     "card_faces": null,
     "layout": "normal",
     "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A2f0309fa-6d72-9e8f-a1b2-3c4d5e6f7a8b&unique=prints"
@@ -123,9 +167,15 @@
     "id": "8e4f6a07-8b9c-0d1e-5f6a-7b8c9d0e1f2a",
     "oracle_id": "3a1410ab-7e83-0f9a-b2c3-4d5e6f7a8b9c",
     "name": "Valki, God of Lies",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Legendary Creature — God // Legendary Planeswalker — Tibalt",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Legendary Creature \u2014 God // Legendary Planeswalker \u2014 Tibalt",
     "oracle_text": null,
     "mana_cost": null,
     "cmc": 2.0,
@@ -133,19 +183,24 @@
     "card_faces": [
       {
         "name": "Valki, God of Lies",
-        "type_line": "Legendary Creature — God",
+        "type_line": "Legendary Creature \u2014 God",
         "oracle_text": "When Valki, God of Lies enters the battlefield, each opponent reveals their hand. For each opponent, exile a creature card they revealed this way until Valki leaves the battlefield.\n{T}: Choose a creature card exiled with Valki. Valki becomes a copy of that card until end of turn.",
         "mana_cost": "{1}{B}",
-        "colors": ["B"],
+        "colors": [
+          "B"
+        ],
         "power": "2",
         "toughness": "1"
       },
       {
         "name": "Tibalt, Cosmic Impostor",
-        "type_line": "Legendary Planeswalker — Tibalt",
-        "oracle_text": "As Tibalt, Cosmic Impostor enters the battlefield, you get an emblem with \"You may play cards exiled with Tibalt, Cosmic Impostor, and you may spend mana as though it were mana of any color to cast those spells.\"\n+2: Exile the top card of each player's library.\n−3: Exile target artifact or creature.\n−8: Exile all graveyards. Add {R}{R}{R}{R}{R}.",
+        "type_line": "Legendary Planeswalker \u2014 Tibalt",
+        "oracle_text": "As Tibalt, Cosmic Impostor enters the battlefield, you get an emblem with \"You may play cards exiled with Tibalt, Cosmic Impostor, and you may spend mana as though it were mana of any color to cast those spells.\"\n+2: Exile the top card of each player's library.\n\u22123: Exile target artifact or creature.\n\u22128: Exile all graveyards. Add {R}{R}{R}{R}{R}.",
         "mana_cost": "{5}{B}{R}",
-        "colors": ["B", "R"],
+        "colors": [
+          "B",
+          "R"
+        ],
         "loyalty": "5"
       }
     ],
@@ -156,9 +211,16 @@
     "id": "9f5a7b18-9c0d-1e2f-6a7b-8c9d0e1f2a3b",
     "oracle_id": "4b2521bc-8f94-1a0b-c3d4-5e6f7a8b9c0d",
     "name": "Meren of Clan Nel Toth",
-    "color_identity": ["B", "G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Legendary Creature — Human Shaman",
+    "color_identity": [
+      "B",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Legendary Creature \u2014 Human Shaman",
     "oracle_text": "Whenever another creature you control dies, you get an experience counter.\nAt the beginning of your end step, choose target creature card in your graveyard. If that card's mana value is less than or equal to the number of experience counters you have, return it to the battlefield. Otherwise, put it into your hand.",
     "mana_cost": "{2}{B}{G}",
     "cmc": 4.0,
@@ -171,9 +233,15 @@
     "id": "aa000001-0000-4000-0000-000000000001",
     "oracle_id": "aa000001-0000-4000-0000-000000000001",
     "name": "Swamp",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "legal", "vintage": "legal"},
-    "type_line": "Basic Land — Swamp",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "legal",
+      "vintage": "legal"
+    },
+    "type_line": "Basic Land \u2014 Swamp",
     "oracle_text": "({T}: Add {B}.)",
     "mana_cost": null,
     "cmc": 0.0,
@@ -186,9 +254,15 @@
     "id": "aa000002-0000-4000-0000-000000000002",
     "oracle_id": "aa000002-0000-4000-0000-000000000002",
     "name": "Plains",
-    "color_identity": ["W"],
-    "legalities": {"commander": "legal", "standard": "legal", "vintage": "legal"},
-    "type_line": "Basic Land — Plains",
+    "color_identity": [
+      "W"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "legal",
+      "vintage": "legal"
+    },
+    "type_line": "Basic Land \u2014 Plains",
     "oracle_text": "({T}: Add {W}.)",
     "mana_cost": null,
     "cmc": 0.0,
@@ -201,9 +275,15 @@
     "id": "aa000003-0000-4000-0000-000000000003",
     "oracle_id": "aa000003-0000-4000-0000-000000000003",
     "name": "Island",
-    "color_identity": ["U"],
-    "legalities": {"commander": "legal", "standard": "legal", "vintage": "legal"},
-    "type_line": "Basic Land — Island",
+    "color_identity": [
+      "U"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "legal",
+      "vintage": "legal"
+    },
+    "type_line": "Basic Land \u2014 Island",
     "oracle_text": "({T}: Add {U}.)",
     "mana_cost": null,
     "cmc": 0.0,
@@ -216,9 +296,15 @@
     "id": "aa000004-0000-4000-0000-000000000004",
     "oracle_id": "aa000004-0000-4000-0000-000000000004",
     "name": "Mountain",
-    "color_identity": ["R"],
-    "legalities": {"commander": "legal", "standard": "legal", "vintage": "legal"},
-    "type_line": "Basic Land — Mountain",
+    "color_identity": [
+      "R"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "legal",
+      "vintage": "legal"
+    },
+    "type_line": "Basic Land \u2014 Mountain",
     "oracle_text": "({T}: Add {R}.)",
     "mana_cost": null,
     "cmc": 0.0,
@@ -231,8 +317,15 @@
     "id": "aa000005-0000-4000-0000-000000000005",
     "oracle_id": "aa000005-0000-4000-0000-000000000005",
     "name": "Golgari Rot Farm",
-    "color_identity": ["B", "G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Land",
     "oracle_text": "{T}: Add {B}{G}. Golgari Rot Farm enters the battlefield tapped.",
     "mana_cost": null,
@@ -246,9 +339,16 @@
     "id": "aa000006-0000-4000-0000-000000000006",
     "oracle_id": "aa000006-0000-4000-0000-000000000006",
     "name": "Overgrown Tomb",
-    "color_identity": ["B", "G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Land — Swamp Forest",
+    "color_identity": [
+      "B",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Land \u2014 Swamp Forest",
     "oracle_text": "({T}: Add {B} or {G}.)\nAs Overgrown Tomb enters the battlefield, you may pay 2 life. If you don't, it enters tapped.",
     "mana_cost": null,
     "cmc": 0.0,
@@ -261,8 +361,15 @@
     "id": "aa000007-0000-4000-0000-000000000007",
     "oracle_id": "aa000007-0000-4000-0000-000000000007",
     "name": "Woodland Cemetery",
-    "color_identity": ["B", "G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Land",
     "oracle_text": "Woodland Cemetery enters the battlefield tapped unless you control a Forest or Swamp.\n{T}: Add {B} or {G}.",
     "mana_cost": null,
@@ -276,8 +383,15 @@
     "id": "aa000008-0000-4000-0000-000000000008",
     "oracle_id": "aa000008-0000-4000-0000-000000000008",
     "name": "Llanowar Wastes",
-    "color_identity": ["B", "G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Land",
     "oracle_text": "{T}: Add {C}. {T}: Add {B} or {G}. Llanowar Wastes deals 1 damage to you.",
     "mana_cost": null,
@@ -291,8 +405,14 @@
     "id": "aa000009-0000-4000-0000-000000000009",
     "oracle_id": "aa000009-0000-4000-0000-000000000009",
     "name": "Bojuka Bog",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Land",
     "oracle_text": "{T}: Add {B}.\nWhen Bojuka Bog enters the battlefield, exile target player's graveyard.",
     "mana_cost": null,
@@ -307,7 +427,11 @@
     "oracle_id": "aa000010-0000-4000-0000-000000000010",
     "name": "Myriad Landscape",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Land",
     "oracle_text": "{T}: Add {C}.\n{2}, {T}, Sacrifice Myriad Landscape: Search your library for up to two basic land cards that share a land type, put them onto the battlefield tapped, then shuffle.",
     "mana_cost": null,
@@ -322,7 +446,11 @@
     "oracle_id": "aa000011-0000-4000-0000-000000000011",
     "name": "Arcane Signet",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Artifact",
     "oracle_text": "{T}: Add {C}. {T}: Add one mana of any color in your commander's color identity.",
     "mana_cost": "{2}",
@@ -336,8 +464,15 @@
     "id": "aa000012-0000-4000-0000-000000000012",
     "oracle_id": "aa000012-0000-4000-0000-000000000012",
     "name": "Golgari Signet",
-    "color_identity": ["B", "G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Artifact",
     "oracle_text": "{1}, {T}: Add {B}{G}.",
     "mana_cost": "{2}",
@@ -351,8 +486,14 @@
     "id": "aa000013-0000-4000-0000-000000000013",
     "oracle_id": "aa000013-0000-4000-0000-000000000013",
     "name": "Kodama's Reach",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Search your library for up to two basic land cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
     "mana_cost": "{2}{G}",
@@ -366,8 +507,14 @@
     "id": "aa000014-0000-4000-0000-000000000014",
     "oracle_id": "aa000014-0000-4000-0000-000000000014",
     "name": "Rampant Growth",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
     "mana_cost": "{1}{G}",
@@ -381,8 +528,14 @@
     "id": "aa000015-0000-4000-0000-000000000015",
     "oracle_id": "aa000015-0000-4000-0000-000000000015",
     "name": "Nature's Lore",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Search your library for a Forest card and put it onto the battlefield. Then shuffle.",
     "mana_cost": "{1}{G}",
@@ -396,8 +549,14 @@
     "id": "aa000016-0000-4000-0000-000000000016",
     "oracle_id": "aa000016-0000-4000-0000-000000000016",
     "name": "Farseek",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Search your library for a Plains, Island, Swamp, or Forest card and put it onto the battlefield tapped, then shuffle.",
     "mana_cost": "{1}{G}",
@@ -411,8 +570,14 @@
     "id": "aa000017-0000-4000-0000-000000000017",
     "oracle_id": "aa000017-0000-4000-0000-000000000017",
     "name": "Three Visits",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Search your library for a Forest card, put it onto the battlefield, then shuffle.",
     "mana_cost": "{1}{G}",
@@ -426,9 +591,15 @@
     "id": "aa000018-0000-4000-0000-000000000018",
     "oracle_id": "aa000018-0000-4000-0000-000000000018",
     "name": "Llanowar Elves",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Elf Druid",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Elf Druid",
     "oracle_text": "{T}: Add {G}.",
     "mana_cost": "{G}",
     "cmc": 1.0,
@@ -441,9 +612,15 @@
     "id": "aa000019-0000-4000-0000-000000000019",
     "oracle_id": "aa000019-0000-4000-0000-000000000019",
     "name": "Elvish Mystic",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Elf Druid",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Elf Druid",
     "oracle_text": "{T}: Add {G}.",
     "mana_cost": "{G}",
     "cmc": 1.0,
@@ -456,9 +633,15 @@
     "id": "aa000020-0000-4000-0000-000000000020",
     "oracle_id": "aa000020-0000-4000-0000-000000000020",
     "name": "Fyndhorn Elves",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Elf Druid",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Elf Druid",
     "oracle_text": "{T}: Add {G}.",
     "mana_cost": "{G}",
     "cmc": 1.0,
@@ -472,7 +655,11 @@
     "oracle_id": "aa000021-0000-4000-0000-000000000021",
     "name": "Mind Stone",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Artifact",
     "oracle_text": "{T}: Add {C}.\n{1}, {T}, Sacrifice Mind Stone: Draw a card.",
     "mana_cost": "{2}",
@@ -487,7 +674,11 @@
     "oracle_id": "aa000022-0000-4000-0000-000000000022",
     "name": "Worn Powerstone",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Artifact",
     "oracle_text": "{T}: Add {C}{C}.",
     "mana_cost": "{3}",
@@ -502,7 +693,11 @@
     "oracle_id": "aa000023-0000-4000-0000-000000000023",
     "name": "Gilded Lotus",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Artifact",
     "oracle_text": "{T}: Add {C}{C}{C}.",
     "mana_cost": "{5}",
@@ -517,8 +712,12 @@
     "oracle_id": "aa000024-0000-4000-0000-000000000024",
     "name": "Solemn Simulacrum",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Artifact Creature — Golem",
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Artifact Creature \u2014 Golem",
     "oracle_text": "When Solemn Simulacrum enters the battlefield, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.\nWhen Solemn Simulacrum dies, you may draw a card.",
     "mana_cost": "{4}",
     "cmc": 4.0,
@@ -531,8 +730,14 @@
     "id": "aa000025-0000-4000-0000-000000000025",
     "oracle_id": "aa000025-0000-4000-0000-000000000025",
     "name": "Phyrexian Arena",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Enchantment",
     "oracle_text": "At the beginning of your upkeep, you draw a card and you lose 1 life.",
     "mana_cost": "{1}{B}{B}",
@@ -546,8 +751,14 @@
     "id": "aa000026-0000-4000-0000-000000000026",
     "oracle_id": "aa000026-0000-4000-0000-000000000026",
     "name": "Night's Whisper",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "You draw two cards and you lose 2 life.",
     "mana_cost": "{1}{B}",
@@ -561,8 +772,14 @@
     "id": "aa000027-0000-4000-0000-000000000027",
     "oracle_id": "aa000027-0000-4000-0000-000000000027",
     "name": "Read the Bones",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Scry 2, then draw two cards.",
     "mana_cost": "{2}{B}",
@@ -576,8 +793,14 @@
     "id": "aa000028-0000-4000-0000-000000000028",
     "oracle_id": "aa000028-0000-4000-0000-000000000028",
     "name": "Harmonize",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Draw three cards.",
     "mana_cost": "{2}{G}{G}",
@@ -591,9 +814,15 @@
     "id": "aa000029-0000-4000-0000-000000000029",
     "oracle_id": "aa000029-0000-4000-0000-000000000029",
     "name": "Beast Whisperer",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Elf Druid",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Elf Druid",
     "oracle_text": "Whenever you cast a creature spell, draw a card.",
     "mana_cost": "{2}{G}{G}",
     "cmc": 4.0,
@@ -606,8 +835,14 @@
     "id": "aa000030-0000-4000-0000-000000000030",
     "oracle_id": "aa000030-0000-4000-0000-000000000030",
     "name": "Guardian Project",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Enchantment",
     "oracle_text": "Whenever a nontoken creature enters the battlefield under your control, if that creature doesn't share a name with another creature you control or a creature card in your graveyard, draw a card.",
     "mana_cost": "{3}{G}",
@@ -621,9 +856,15 @@
     "id": "aa000031-0000-4000-0000-000000000031",
     "oracle_id": "aa000031-0000-4000-0000-000000000031",
     "name": "Midnight Reaper",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Zombie Knight",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Zombie Knight",
     "oracle_text": "Whenever a nontoken creature you control dies, you draw a card and you lose 1 life.",
     "mana_cost": "{2}{B}",
     "cmc": 3.0,
@@ -636,9 +877,15 @@
     "id": "aa000032-0000-4000-0000-000000000032",
     "oracle_id": "aa000032-0000-4000-0000-000000000032",
     "name": "Dark Confidant",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Human Wizard",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Human Wizard",
     "oracle_text": "At the beginning of your upkeep, reveal the top card of your library and put it into your hand. You lose life equal to its converted mana cost.",
     "mana_cost": "{1}{B}",
     "cmc": 2.0,
@@ -651,8 +898,14 @@
     "id": "aa000033-0000-4000-0000-000000000033",
     "oracle_id": "aa000033-0000-4000-0000-000000000033",
     "name": "Painful Truths",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Draw three cards.",
     "mana_cost": "{2}{B}",
@@ -666,8 +919,14 @@
     "id": "aa000034-0000-4000-0000-000000000034",
     "oracle_id": "aa000034-0000-4000-0000-000000000034",
     "name": "Murder",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Instant",
     "oracle_text": "Destroy target creature.",
     "mana_cost": "{1}{B}{B}",
@@ -681,8 +940,14 @@
     "id": "aa000035-0000-4000-0000-000000000035",
     "oracle_id": "aa000035-0000-4000-0000-000000000035",
     "name": "Go for the Throat",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Instant",
     "oracle_text": "Destroy target creature.",
     "mana_cost": "{1}{B}",
@@ -696,8 +961,14 @@
     "id": "aa000036-0000-4000-0000-000000000036",
     "oracle_id": "aa000036-0000-4000-0000-000000000036",
     "name": "Doom Blade",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Instant",
     "oracle_text": "Destroy target creature.",
     "mana_cost": "{1}{B}",
@@ -711,8 +982,14 @@
     "id": "aa000037-0000-4000-0000-000000000037",
     "oracle_id": "aa000037-0000-4000-0000-000000000037",
     "name": "Beast Within",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Instant",
     "oracle_text": "Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
     "mana_cost": "{2}{G}",
@@ -726,8 +1003,15 @@
     "id": "aa000038-0000-4000-0000-000000000038",
     "oracle_id": "aa000038-0000-4000-0000-000000000038",
     "name": "Assassin's Trophy",
-    "color_identity": ["B", "G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Instant",
     "oracle_text": "Destroy target permanent an opponent controls. Its controller may search their library for a basic land card, put it onto the battlefield, then shuffle.",
     "mana_cost": "{B}{G}",
@@ -741,8 +1025,15 @@
     "id": "aa000039-0000-4000-0000-000000000039",
     "oracle_id": "aa000039-0000-4000-0000-000000000039",
     "name": "Abrupt Decay",
-    "color_identity": ["B", "G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Instant",
     "oracle_text": "This spell can't be countered.\nDestroy target nonland permanent with mana value 3 or less.",
     "mana_cost": "{B}{G}",
@@ -756,8 +1047,14 @@
     "id": "aa000040-0000-4000-0000-000000000040",
     "oracle_id": "aa000040-0000-4000-0000-000000000040",
     "name": "Krosan Grip",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Instant",
     "oracle_text": "Split second\nDestroy target artifact or enchantment.",
     "mana_cost": "{2}{G}",
@@ -771,8 +1068,14 @@
     "id": "aa000041-0000-4000-0000-000000000041",
     "oracle_id": "aa000041-0000-4000-0000-000000000041",
     "name": "Nature's Claim",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Instant",
     "oracle_text": "Destroy target artifact or enchantment. Its controller gains 4 life.",
     "mana_cost": "{G}",
@@ -786,8 +1089,14 @@
     "id": "aa000042-0000-4000-0000-000000000042",
     "oracle_id": "aa000042-0000-4000-0000-000000000042",
     "name": "Damnation",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Destroy all creatures. They can't be regenerated.",
     "mana_cost": "{2}{B}{B}",
@@ -801,8 +1110,14 @@
     "id": "aa000043-0000-4000-0000-000000000043",
     "oracle_id": "aa000043-0000-4000-0000-000000000043",
     "name": "Toxic Deluge",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "As an additional cost to cast this spell, pay X life.\nAll creatures get -X/-X until end of turn.",
     "mana_cost": "{2}{B}",
@@ -816,8 +1131,14 @@
     "id": "aa000044-0000-4000-0000-000000000044",
     "oracle_id": "aa000044-0000-4000-0000-000000000044",
     "name": "Languish",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "All creatures get -4/-4 until end of turn.",
     "mana_cost": "{2}{B}{B}",
@@ -831,8 +1152,15 @@
     "id": "aa000045-0000-4000-0000-000000000045",
     "oracle_id": "aa000045-0000-4000-0000-000000000045",
     "name": "In Garruk's Wake",
-    "color_identity": ["B", "G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Destroy all creatures you don't control and all planeswalkers you don't control.",
     "mana_cost": "{7}{B}{G}",
@@ -846,8 +1174,14 @@
     "id": "aa000046-0000-4000-0000-000000000046",
     "oracle_id": "aa000046-0000-4000-0000-000000000046",
     "name": "Living Death",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Each player exiles all creature cards from their graveyard, then Destroy all creatures, then each player returns all cards they exiled this way to the battlefield.",
     "mana_cost": "{3}{B}{B}",
@@ -862,12 +1196,18 @@
     "oracle_id": "aa000047-0000-4000-0000-000000000047",
     "name": "Swiftfoot Boots",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Artifact — Equipment",
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Artifact \u2014 Equipment",
     "oracle_text": "Equipped creature has haste and hexproof.\nEquip {1}",
     "mana_cost": "{2}",
     "cmc": 2.0,
-    "keywords": ["Equip"],
+    "keywords": [
+      "Equip"
+    ],
     "card_faces": null,
     "layout": "normal",
     "prints_search_uri": null
@@ -877,12 +1217,18 @@
     "oracle_id": "aa000048-0000-4000-0000-000000000048",
     "name": "Darksteel Plate",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Artifact — Equipment",
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Artifact \u2014 Equipment",
     "oracle_text": "Indestructible\nEquipped creature has indestructible.\nEquip {3}",
     "mana_cost": "{3}",
     "cmc": 3.0,
-    "keywords": ["Equip"],
+    "keywords": [
+      "Equip"
+    ],
     "card_faces": null,
     "layout": "normal",
     "prints_search_uri": null
@@ -891,8 +1237,14 @@
     "id": "aa000049-0000-4000-0000-000000000049",
     "oracle_id": "aa000049-0000-4000-0000-000000000049",
     "name": "Heroic Intervention",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Instant",
     "oracle_text": "Until end of turn, permanents you control gain hexproof and indestructible.",
     "mana_cost": "{1}{G}",
@@ -906,9 +1258,15 @@
     "id": "aa000050-0000-4000-0000-000000000050",
     "oracle_id": "aa000050-0000-4000-0000-000000000050",
     "name": "Sylvan Safekeeper",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Human Wizard",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Human Wizard",
     "oracle_text": "Sacrifice a land: Target creature you control gains shroud until end of turn.",
     "mana_cost": "{G}",
     "cmc": 1.0,
@@ -921,9 +1279,15 @@
     "id": "aa000051-0000-4000-0000-000000000051",
     "oracle_id": "aa000051-0000-4000-0000-000000000051",
     "name": "Viscera Seer",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Vampire Wizard",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Vampire Wizard",
     "oracle_text": "Sacrifice a creature: Scry 1.",
     "mana_cost": "{B}",
     "cmc": 1.0,
@@ -937,7 +1301,11 @@
     "oracle_id": "aa000052-0000-4000-0000-000000000052",
     "name": "Altar of Dementia",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Artifact",
     "oracle_text": "Sacrifice a creature: Target player mills cards equal to the sacrificed creature's power.",
     "mana_cost": "{2}",
@@ -952,7 +1320,11 @@
     "oracle_id": "aa000053-0000-4000-0000-000000000053",
     "name": "Ashnod's Altar",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Artifact",
     "oracle_text": "Sacrifice a creature: Add {C}{C}.",
     "mana_cost": "{3}",
@@ -966,9 +1338,15 @@
     "id": "aa000054-0000-4000-0000-000000000054",
     "oracle_id": "aa000054-0000-4000-0000-000000000054",
     "name": "Carrion Feeder",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Zombie",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Zombie",
     "oracle_text": "Carrion Feeder can't block.\nSacrifice a creature: Put a +1/+1 counter on Carrion Feeder.",
     "mana_cost": "{B}",
     "cmc": 1.0,
@@ -981,9 +1359,15 @@
     "id": "aa000055-0000-4000-0000-000000000055",
     "oracle_id": "aa000055-0000-4000-0000-000000000055",
     "name": "Yawgmoth, Thran Physician",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Legendary Creature — Human Wizard",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Legendary Creature \u2014 Human Wizard",
     "oracle_text": "{1}, Pay 1 life, Sacrifice another creature: Put a -1/-1 counter on up to one target creature, then draw a card. Proliferate.",
     "mana_cost": "{3}{B}",
     "cmc": 4.0,
@@ -996,9 +1380,15 @@
     "id": "aa000056-0000-4000-0000-000000000056",
     "oracle_id": "aa000056-0000-4000-0000-000000000056",
     "name": "Blood Artist",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Vampire",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Vampire",
     "oracle_text": "Whenever Blood Artist or another creature dies, target player loses 1 life and you gain 1 life.",
     "mana_cost": "{1}{B}",
     "cmc": 2.0,
@@ -1011,9 +1401,15 @@
     "id": "aa000057-0000-4000-0000-000000000057",
     "oracle_id": "aa000057-0000-4000-0000-000000000057",
     "name": "Zulaport Cutthroat",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Human Rogue",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Human Rogue",
     "oracle_text": "Whenever Zulaport Cutthroat or another creature you control dies, each opponent loses 1 life and you gain 1 life.",
     "mana_cost": "{1}{B}",
     "cmc": 2.0,
@@ -1026,13 +1422,21 @@
     "id": "aa000058-0000-4000-0000-000000000058",
     "oracle_id": "aa000058-0000-4000-0000-000000000058",
     "name": "Dictate of Erebos",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Enchantment",
     "oracle_text": "Flash\nWhenever a creature you control dies, each opponent sacrifices a creature.",
     "mana_cost": "{3}{B}{B}",
     "cmc": 5.0,
-    "keywords": ["Flash"],
+    "keywords": [
+      "Flash"
+    ],
     "card_faces": null,
     "layout": "normal",
     "prints_search_uri": null
@@ -1041,8 +1445,14 @@
     "id": "aa000059-0000-4000-0000-000000000059",
     "oracle_id": "aa000059-0000-4000-0000-000000000059",
     "name": "Grave Pact",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Enchantment",
     "oracle_text": "Whenever a creature you control dies, each other player sacrifices a creature.",
     "mana_cost": "{1}{B}{B}{B}",
@@ -1056,8 +1466,14 @@
     "id": "aa000060-0000-4000-0000-000000000060",
     "oracle_id": "aa000060-0000-4000-0000-000000000060",
     "name": "Bastion of Remembrance",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Enchantment",
     "oracle_text": "When Bastion of Remembrance enters the battlefield, create a 1/1 white Human creature token.\nWhenever a creature you control dies, each opponent loses 1 life and you gain 1 life.",
     "mana_cost": "{2}{B}",
@@ -1071,9 +1487,15 @@
     "id": "aa000061-0000-4000-0000-000000000061",
     "oracle_id": "aa000061-0000-4000-0000-000000000061",
     "name": "Pawn of Ulamog",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Vampire Shaman",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Vampire Shaman",
     "oracle_text": "Whenever Pawn of Ulamog or another nontoken creature you control dies, you may create a 0/1 colorless Eldrazi Spawn creature token.",
     "mana_cost": "{1}{B}{B}",
     "cmc": 3.0,
@@ -1086,9 +1508,15 @@
     "id": "aa000062-0000-4000-0000-000000000062",
     "oracle_id": "aa000062-0000-4000-0000-000000000062",
     "name": "Eternal Witness",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Human Shaman",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Human Shaman",
     "oracle_text": "When Eternal Witness enters the battlefield, you may return target card from your graveyard to your hand.",
     "mana_cost": "{1}{G}{G}",
     "cmc": 3.0,
@@ -1101,8 +1529,14 @@
     "id": "aa000063-0000-4000-0000-000000000063",
     "oracle_id": "aa000063-0000-4000-0000-000000000063",
     "name": "Reanimate",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Return target creature card from your graveyard to the battlefield under your control. You lose life equal to its converted mana cost.",
     "mana_cost": "{B}",
@@ -1116,9 +1550,15 @@
     "id": "aa000064-0000-4000-0000-000000000064",
     "oracle_id": "aa000064-0000-4000-0000-000000000064",
     "name": "Animate Dead",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Enchantment — Aura",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Enchantment \u2014 Aura",
     "oracle_text": "Return target creature card from your graveyard to the battlefield under your control. When Animate Dead leaves the battlefield, that creature's controller sacrifices it.",
     "mana_cost": "{1}{B}",
     "cmc": 2.0,
@@ -1131,8 +1571,14 @@
     "id": "aa000065-0000-4000-0000-000000000065",
     "oracle_id": "aa000065-0000-4000-0000-000000000065",
     "name": "Phyrexian Reclamation",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Enchantment",
     "oracle_text": "{1}{B}, Pay 2 life: Return target creature card from your graveyard to your hand.",
     "mana_cost": "{B}",
@@ -1146,13 +1592,21 @@
     "id": "aa000066-0000-4000-0000-000000000066",
     "oracle_id": "aa000066-0000-4000-0000-000000000066",
     "name": "Sheoldred, Whispering One",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Legendary Creature — Praetor",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Legendary Creature \u2014 Praetor",
     "oracle_text": "Swampwalk\nAt the beginning of your upkeep, return target creature card from your graveyard to the battlefield.\nAt the beginning of each other player's upkeep, that player sacrifices a creature.",
     "mana_cost": "{5}{B}{B}",
     "cmc": 7.0,
-    "keywords": ["Swampwalk"],
+    "keywords": [
+      "Swampwalk"
+    ],
     "card_faces": null,
     "layout": "normal",
     "prints_search_uri": null
@@ -1161,8 +1615,14 @@
     "id": "aa000067-0000-4000-0000-000000000067",
     "oracle_id": "aa000067-0000-4000-0000-000000000067",
     "name": "Victimize",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Sacrifice a creature: Return two target creature cards from your graveyard to the battlefield tapped.",
     "mana_cost": "{2}{B}",
@@ -1176,10 +1636,16 @@
     "id": "aa000068-0000-4000-0000-000000000068",
     "oracle_id": "aa000068-0000-4000-0000-000000000068",
     "name": "Avenger of Zendikar",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Elemental",
-    "oracle_text": "When Avenger of Zendikar enters the battlefield, create a 0/1 green Plant creature token for each land you control.\nLandfall — Whenever a land enters the battlefield under your control, you may put a +1/+1 counter on each Plant token you control.",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Elemental",
+    "oracle_text": "When Avenger of Zendikar enters the battlefield, create a 0/1 green Plant creature token for each land you control.\nLandfall \u2014 Whenever a land enters the battlefield under your control, you may put a +1/+1 counter on each Plant token you control.",
     "mana_cost": "{5}{G}{G}",
     "cmc": 7.0,
     "keywords": [],
@@ -1191,10 +1657,16 @@
     "id": "aa000069-0000-4000-0000-000000000069",
     "oracle_id": "aa000069-0000-4000-0000-000000000069",
     "name": "Tendershoot Dryad",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Dryad",
-    "oracle_text": "Landfall — Whenever a land enters the battlefield under your control, create a 1/1 green Saproling creature token.",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Dryad",
+    "oracle_text": "Landfall \u2014 Whenever a land enters the battlefield under your control, create a 1/1 green Saproling creature token.",
     "mana_cost": "{4}{G}",
     "cmc": 5.0,
     "keywords": [],
@@ -1206,13 +1678,21 @@
     "id": "aa000070-0000-4000-0000-000000000070",
     "oracle_id": "aa000070-0000-4000-0000-000000000070",
     "name": "Mycoloth",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Fungus",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Fungus",
     "oracle_text": "Devour 2\nAt the beginning of your upkeep, create a 1/1 green Saproling creature token for each +1/+1 counter on Mycoloth.",
     "mana_cost": "{3}{G}{G}",
     "cmc": 5.0,
-    "keywords": ["Devour"],
+    "keywords": [
+      "Devour"
+    ],
     "card_faces": null,
     "layout": "normal",
     "prints_search_uri": null
@@ -1221,9 +1701,15 @@
     "id": "aa000071-0000-4000-0000-000000000071",
     "oracle_id": "aa000071-0000-4000-0000-000000000071",
     "name": "Bitterblossom",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Tribal Enchantment — Faerie",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Tribal Enchantment \u2014 Faerie",
     "oracle_text": "At the beginning of your upkeep, you lose 1 life and create a 1/1 black Faerie Rogue creature token with flying.",
     "mana_cost": "{1}{B}",
     "cmc": 2.0,
@@ -1236,9 +1722,15 @@
     "id": "aa000072-0000-4000-0000-000000000072",
     "oracle_id": "aa000072-0000-4000-0000-000000000072",
     "name": "Pitiless Plunderer",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Human Pirate",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Human Pirate",
     "oracle_text": "Whenever another creature you control dies, create a Treasure token.",
     "mana_cost": "{3}{B}",
     "cmc": 4.0,
@@ -1251,13 +1743,21 @@
     "id": "aa000073-0000-4000-0000-000000000073",
     "oracle_id": "aa000073-0000-4000-0000-000000000073",
     "name": "Craterhoof Behemoth",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Beast",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Beast",
     "oracle_text": "Haste\nWhen Craterhoof Behemoth enters the battlefield, creatures you control gain trample and get +X/+X until end of turn, where X is the number of creatures you control.",
     "mana_cost": "{5}{G}{G}{G}",
     "cmc": 8.0,
-    "keywords": ["Haste"],
+    "keywords": [
+      "Haste"
+    ],
     "card_faces": null,
     "layout": "normal",
     "prints_search_uri": null
@@ -1266,8 +1766,14 @@
     "id": "aa000074-0000-4000-0000-000000000074",
     "oracle_id": "aa000074-0000-4000-0000-000000000074",
     "name": "Exsanguinate",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Each opponent loses X life. You gain life equal to the life lost this way.",
     "mana_cost": "{X}{B}{B}",
@@ -1281,8 +1787,14 @@
     "id": "aa000075-0000-4000-0000-000000000075",
     "oracle_id": "aa000075-0000-4000-0000-000000000075",
     "name": "Torment of Hailfire",
-    "color_identity": ["B"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Repeat the following process X times. Each opponent loses 3 life unless that player sacrifices a nonland permanent or discards a card.",
     "mana_cost": "{X}{B}{B}",
@@ -1296,8 +1808,14 @@
     "id": "aa000076-0000-4000-0000-000000000076",
     "oracle_id": "aa000076-0000-4000-0000-000000000076",
     "name": "Triumph of the Hordes",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Sorcery",
     "oracle_text": "Until end of turn, creatures you control get +1/+1 and gain trample and infect.",
     "mana_cost": "{1}{G}{G}{G}",
@@ -1312,7 +1830,11 @@
     "oracle_id": "aa000077-0000-4000-0000-000000000077",
     "name": "Aetherflux Reservoir",
     "color_identity": [],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Artifact",
     "oracle_text": "Whenever you cast a spell, you gain 1 life for each spell you've cast this turn.\nPay 50 life: Aetherflux Reservoir deals 50 damage to any target.",
     "mana_cost": "{4}",
@@ -1326,10 +1848,16 @@
     "id": "aa000078-0000-4000-0000-000000000078",
     "oracle_id": "aa000078-0000-4000-0000-000000000078",
     "name": "Lotus Cobra",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Snake",
-    "oracle_text": "Landfall — Whenever a land enters the battlefield under your control, add one mana of any color to your mana pool.",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Snake",
+    "oracle_text": "Landfall \u2014 Whenever a land enters the battlefield under your control, add one mana of any color to your mana pool.",
     "mana_cost": "{1}{G}",
     "cmc": 2.0,
     "keywords": [],
@@ -1341,13 +1869,21 @@
     "id": "aa000079-0000-4000-0000-000000000079",
     "oracle_id": "aa000079-0000-4000-0000-000000000079",
     "name": "Rampaging Baloths",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Beast",
-    "oracle_text": "Trample\nLandfall — Whenever a land enters the battlefield under your control, you may create a 4/4 green Beast creature token.",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Beast",
+    "oracle_text": "Trample\nLandfall \u2014 Whenever a land enters the battlefield under your control, you may create a 4/4 green Beast creature token.",
     "mana_cost": "{4}{G}{G}",
     "cmc": 6.0,
-    "keywords": ["Trample"],
+    "keywords": [
+      "Trample"
+    ],
     "card_faces": null,
     "layout": "normal",
     "prints_search_uri": null
@@ -1356,10 +1892,16 @@
     "id": "aa000080-0000-4000-0000-000000000080",
     "oracle_id": "aa000080-0000-4000-0000-000000000080",
     "name": "Tireless Tracker",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Human Scout",
-    "oracle_text": "Landfall — Whenever a land enters the battlefield under your control, investigate.",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Human Scout",
+    "oracle_text": "Landfall \u2014 Whenever a land enters the battlefield under your control, investigate.",
     "mana_cost": "{2}{G}",
     "cmc": 3.0,
     "keywords": [],
@@ -1371,10 +1913,16 @@
     "id": "aa000081-0000-4000-0000-000000000081",
     "oracle_id": "aa000081-0000-4000-0000-000000000081",
     "name": "Scute Swarm",
-    "color_identity": ["G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Creature — Insect",
-    "oracle_text": "Landfall — Whenever a land enters the battlefield under your control, create a 1/1 green Insect creature token.",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Insect",
+    "oracle_text": "Landfall \u2014 Whenever a land enters the battlefield under your control, create a 1/1 green Insect creature token.",
     "mana_cost": "{2}{G}",
     "cmc": 3.0,
     "keywords": [],
@@ -1386,13 +1934,27 @@
     "id": "aa000082-0000-4000-0000-000000000082",
     "oracle_id": "aa000082-0000-4000-0000-000000000082",
     "name": "Atraxa, Praetors' Voice",
-    "color_identity": ["W", "U", "B", "G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Legendary Creature — Phyrexian Praetor",
+    "color_identity": [
+      "W",
+      "U",
+      "B",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Legendary Creature \u2014 Phyrexian Praetor",
     "oracle_text": "Flying, vigilance, deathtouch, lifelink\nAt the beginning of your end step, proliferate.",
     "mana_cost": "{G}{W}{U}{B}",
     "cmc": 4.0,
-    "keywords": ["Flying", "Vigilance", "Deathtouch", "Lifelink"],
+    "keywords": [
+      "Flying",
+      "Vigilance",
+      "Deathtouch",
+      "Lifelink"
+    ],
     "card_faces": null,
     "layout": "normal",
     "prints_search_uri": null
@@ -1401,9 +1963,17 @@
     "id": "aa000083-0000-4000-0000-000000000083",
     "oracle_id": "aa000083-0000-4000-0000-000000000083",
     "name": "Prossh, Skyraider of Kher",
-    "color_identity": ["B", "R", "G"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Legendary Creature — Dragon",
+    "color_identity": [
+      "B",
+      "R",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Legendary Creature \u2014 Dragon",
     "oracle_text": "When Prossh, Skyraider of Kher enters the battlefield, create X 0/1 red Kobold creature tokens, where X is the total mana spent to cast Prossh.\nSacrifice another creature: Prossh gets +1/+0 until end of turn.",
     "mana_cost": "{3}{B}{R}{G}",
     "cmc": 6.0,
@@ -1416,13 +1986,24 @@
     "id": "aa000084-0000-4000-0000-000000000084",
     "oracle_id": "aa000084-0000-4000-0000-000000000084",
     "name": "Edgar Markov",
-    "color_identity": ["W", "B", "R"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
-    "type_line": "Legendary Creature — Vampire Knight",
-    "oracle_text": "Eminence — Whenever you cast another Vampire spell, if Edgar Markov is in the command zone or on the battlefield, create a 1/1 black Vampire creature token.\nFirst strike, haste\nWhenever Edgar Markov attacks, put a +1/+1 counter on each Vampire you control.",
+    "color_identity": [
+      "W",
+      "B",
+      "R"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Legendary Creature \u2014 Vampire Knight",
+    "oracle_text": "Eminence \u2014 Whenever you cast another Vampire spell, if Edgar Markov is in the command zone or on the battlefield, create a 1/1 black Vampire creature token.\nFirst strike, haste\nWhenever Edgar Markov attacks, put a +1/+1 counter on each Vampire you control.",
     "mana_cost": "{3}{R}{B}{W}",
     "cmc": 6.0,
-    "keywords": ["First strike", "Haste"],
+    "keywords": [
+      "First strike",
+      "Haste"
+    ],
     "card_faces": null,
     "layout": "normal",
     "prints_search_uri": null
@@ -1431,8 +2012,14 @@
     "id": "aa000085-0000-4000-0000-000000000085",
     "oracle_id": "aa000085-0000-4000-0000-000000000085",
     "name": "Counterspell",
-    "color_identity": ["U"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "U"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Instant",
     "oracle_text": "Counter target spell.",
     "mana_cost": "{U}{U}",
@@ -1446,8 +2033,14 @@
     "id": "aa000086-0000-4000-0000-000000000086",
     "oracle_id": "aa000086-0000-4000-0000-000000000086",
     "name": "Lightning Bolt",
-    "color_identity": ["R"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "R"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Instant",
     "oracle_text": "Lightning Bolt deals 3 damage to any target.",
     "mana_cost": "{R}",
@@ -1461,11 +2054,109 @@
     "id": "aa000087-0000-4000-0000-000000000087",
     "oracle_id": "aa000087-0000-4000-0000-000000000087",
     "name": "Rhystic Study",
-    "color_identity": ["U"],
-    "legalities": {"commander": "legal", "standard": "not_legal", "vintage": "legal"},
+    "color_identity": [
+      "U"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
     "type_line": "Enchantment",
     "oracle_text": "Whenever an opponent casts a spell, you may draw a card unless that player pays {1}.",
     "mana_cost": "{2}{U}",
+    "cmc": 3.0,
+    "keywords": [],
+    "card_faces": null,
+    "layout": "normal",
+    "prints_search_uri": null
+  },
+  {
+    "id": "aa000088-0000-4000-0000-000000000088",
+    "oracle_id": "aa000088-0000-4000-0000-000000000088",
+    "name": "Gemstone Mine",
+    "color_identity": [],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal"
+    },
+    "type_line": "Land",
+    "oracle_text": "Gemstone Mine enters the battlefield with three mining counters on it.\n{T}, Remove a mining counter from Gemstone Mine: Add one mana of any color. If there are no mining counters on Gemstone Mine, sacrifice it.",
+    "mana_cost": null,
+    "cmc": 0.0,
+    "keywords": [],
+    "card_faces": null,
+    "layout": "normal",
+    "prints_search_uri": null
+  },
+  {
+    "id": "aa000089-0000-4000-0000-000000000089",
+    "oracle_id": "aa000089-0000-4000-0000-000000000089",
+    "name": "Reliquary Tower",
+    "color_identity": [],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal"
+    },
+    "type_line": "Land",
+    "oracle_text": "You have no maximum hand size.\n{T}: Add {C}.",
+    "mana_cost": null,
+    "cmc": 0.0,
+    "keywords": [],
+    "card_faces": null,
+    "layout": "normal",
+    "prints_search_uri": null
+  },
+  {
+    "id": "aa000090-0000-4000-0000-000000000090",
+    "oracle_id": "aa000090-0000-4000-0000-000000000090",
+    "name": "Eldrazi Mimic",
+    "color_identity": [],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal"
+    },
+    "type_line": "Creature \u2014 Eldrazi",
+    "oracle_text": "Whenever another colorless creature enters the battlefield under your control, you may have the base power and toughness of Eldrazi Mimic become that creature's power and toughness until end of turn.",
+    "mana_cost": "{2}{C}",
+    "cmc": 3.0,
+    "keywords": [],
+    "card_faces": null,
+    "layout": "normal",
+    "prints_search_uri": null
+  },
+  {
+    "id": "aa000091-0000-4000-0000-000000000091",
+    "oracle_id": "aa000091-0000-4000-0000-000000000091",
+    "name": "Hedron Archive",
+    "color_identity": [],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal"
+    },
+    "type_line": "Artifact",
+    "oracle_text": "{T}: Add {C}{C}.\n{2}, {T}, Sacrifice Hedron Archive: Draw two cards.",
+    "mana_cost": "{4}",
+    "cmc": 4.0,
+    "keywords": [],
+    "card_faces": null,
+    "layout": "normal",
+    "prints_search_uri": null
+  },
+  {
+    "id": "aa000092-0000-4000-0000-000000000092",
+    "oracle_id": "aa000092-0000-4000-0000-000000000092",
+    "name": "Azusa, Lost but Seeking",
+    "color_identity": [
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal"
+    },
+    "type_line": "Legendary Creature \u2014 Human Monk",
+    "oracle_text": "You may play two additional lands on each of your turns.",
+    "mana_cost": "{2}{G}",
     "cmc": 3.0,
     "keywords": [],
     "card_faces": null,

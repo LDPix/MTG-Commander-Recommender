@@ -7,3 +7,6 @@ sqlalchemy>=2.0
 asyncpg
 alembic
 httpx
+uvicorn>=0.47.0
+aiosqlite>=0.22.1
+greenlet>=3.5.0
