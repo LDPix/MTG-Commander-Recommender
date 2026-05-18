@@ -112,6 +112,32 @@ def test_saved_deck_detail_matches_generated_response(
     assert saved_ids == generated_ids
 
 
+def test_saved_deck_detail_preserves_quota_credit_fields(
+    api_client: TestClient, seeded_collection: str
+) -> None:
+    """Saved deck detail preserves role-credit quota fields from generation."""
+    gen_resp = _generate(api_client, seeded_collection)
+    assert gen_resp.status_code == 200
+    generated = gen_resp.json()
+    deck_id = generated["deck_id"]
+
+    detail_resp = _get_saved(api_client, deck_id, seeded_collection)
+    assert detail_resp.status_code == 200
+    detail_quotas = detail_resp.json()["deck"]["quota_status"]
+
+    assert detail_quotas
+    assert len(detail_quotas) == len(generated["quota_status"])
+    generated_by_role = {q["role"]: q for q in generated["quota_status"]}
+    for quota in detail_quotas:
+        generated_quota = generated_by_role[quota["role"]]
+        assert "credit_sum" in quota
+        assert "credit_satisfied" in quota
+        assert "credit_warning" in quota
+        assert quota["credit_sum"] == generated_quota["credit_sum"]
+        assert quota["credit_satisfied"] == generated_quota["credit_satisfied"]
+        assert quota["credit_warning"] == generated_quota["credit_warning"]
+
+
 # ---------------------------------------------------------------------------
 # TC-FR-015-01 / AT-FR-015-INT-01 and TC-NFR-013-01 / AT-NFR-013-SEC-01
 # Session isolation — each session only sees its own saved decks
@@ -340,7 +366,9 @@ def test_export_does_not_require_saved_deck(
     assert gen_resp.status_code == 200
 
     # Submit the raw generated payload — no deck_id reference needed for export
-    export_resp = api_client.post(EXPORT_ENDPOINT, json={"deck": gen_resp.json()})
+    deck = gen_resp.json()
+    deck["generation_status"] = "success"
+    export_resp = api_client.post(EXPORT_ENDPOINT, json={"deck": deck})
     assert export_resp.status_code == 200
     assert export_resp.json()["format"] == "plaintext"
     assert "Commander" in export_resp.json()["text"]

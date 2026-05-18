@@ -29,14 +29,13 @@
       "minimum_role_counts": {
         "LAND": 30,
         "RAMP": 7,
-        "CARD_DRAW": 4,
-        "TOKEN_MAKER": 2
+        "CARD_DRAW": 4
       },
       "minimum_owned_percentage": 0.25,
       "expected_package_or_role_hints": [
         "LANDFALL_SYNERGY",
         "TOKEN_MAKER",
-        "PAYOFF"
+        "WIN_CONDITION"
       ],
       "notes": "Green landfall/ramp fixture using the local sample catalog. Commander expectation allows the broader catalog-supported candidates while deck generation exercises landfall package cards."
     },

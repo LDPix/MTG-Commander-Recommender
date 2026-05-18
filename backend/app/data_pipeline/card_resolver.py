@@ -6,6 +6,7 @@ handling reprints, alternate names, and basic lands.
 from __future__ import annotations
 
 
+from app.data_pipeline.basic_land_catalog import normalize_basic_land_card
 from app.models.card import CanonicalCard, CardData
 
 
@@ -39,8 +40,10 @@ class CardResolver:
         self._by_oracle_id: dict[str, CanonicalCard] = {}
         # lowercase name -> oracle_id  (exact name, case-insensitive)
         self._name_to_oracle_id: dict[str, str] = {}
+        normalized_cards = [normalize_basic_land_card(card) for card in cards]
+        exact_names = {card.name.lower() for card in normalized_cards}
 
-        for card in cards:
+        for card in normalized_cards:
             # Build oracle-id index (first occurrence wins)
             if card.oracle_id not in self._by_oracle_id:
                 self._by_oracle_id[card.oracle_id] = CanonicalCard.from_card_data(card)
@@ -54,7 +57,10 @@ class CardResolver:
             if card.card_faces:
                 for face in card.card_faces:
                     face_lower = face.name.lower()
-                    if face_lower not in self._name_to_oracle_id:
+                    if (
+                        face_lower not in exact_names
+                        and face_lower not in self._name_to_oracle_id
+                    ):
                         self._name_to_oracle_id[face_lower] = card.oracle_id
 
     # ------------------------------------------------------------------

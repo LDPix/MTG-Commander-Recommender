@@ -19,5 +19,40 @@
     "remove": [],
     "confidence_overrides": {"CARD_DRAW": 0.95},
     "source": "manual"
+  },
+  {
+    "card_name": "Blood Artist",
+    "add": ["ARISTOCRATS_SYNERGY"],
+    "remove": [],
+    "confidence_overrides": {"ARISTOCRATS_SYNERGY": 0.95},
+    "source": "manual"
+  },
+  {
+    "card_name": "Zulaport Cutthroat",
+    "add": ["ARISTOCRATS_SYNERGY"],
+    "remove": [],
+    "confidence_overrides": {"ARISTOCRATS_SYNERGY": 0.95},
+    "source": "manual"
+  },
+  {
+    "card_name": "Dictate of Erebos",
+    "add": ["ARISTOCRATS_SYNERGY"],
+    "remove": [],
+    "confidence_overrides": {"ARISTOCRATS_SYNERGY": 0.90},
+    "source": "manual"
+  },
+  {
+    "card_name": "Grave Pact",
+    "add": ["ARISTOCRATS_SYNERGY"],
+    "remove": [],
+    "confidence_overrides": {"ARISTOCRATS_SYNERGY": 0.90},
+    "source": "manual"
+  },
+  {
+    "card_name": "Bastion of Remembrance",
+    "add": ["ARISTOCRATS_SYNERGY"],
+    "remove": [],
+    "confidence_overrides": {"ARISTOCRATS_SYNERGY": 0.90},
+    "source": "manual"
   }
 ]

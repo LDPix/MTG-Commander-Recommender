@@ -226,6 +226,57 @@ class TestDeckValidation:
         assert not result.valid
         assert any(e.error_type == "duplicate" for e in result.errors)
 
+    def test_snow_covered_forest_basic_land_allows_multiple_copies(self):
+        validator = LegalityValidator()
+        commander = make_commander("cmd-001", "Green Commander", ["G"])
+        main_deck = _make_main_deck(79, ["G"])
+        snow_forest = make_card(
+            "snow-forest-001",
+            "Snow-Covered Forest",
+            [],
+            type_line="Basic Snow Land — Forest",
+        )
+        main_deck.append((snow_forest, 20))
+
+        result = validator.validate_deck(commander, main_deck)
+
+        assert result.valid
+        assert result.errors == []
+
+    def test_basic_land_status_uses_canonical_type_line(self):
+        basic_snow_forest = make_card(
+            "snow-forest-001",
+            "Snow-Covered Forest",
+            [],
+            type_line="Basic Snow Land — Forest",
+        )
+        nonbasic_snow_land = make_card(
+            "snow-nonbasic-001",
+            "Snow-Covered Hideout",
+            [],
+            type_line="Snow Land",
+        )
+
+        assert basic_snow_forest.is_basic_land is True
+        assert nonbasic_snow_land.is_basic_land is False
+
+    def test_nonbasic_duplicate_still_fails_singleton(self):
+        validator = LegalityValidator()
+        commander = make_commander("cmd-001", "Test Commander", ["W"])
+        main_deck = _make_main_deck(97)
+        nonbasic_land = make_card(
+            "nb-land-001",
+            "Reliquary Tower",
+            [],
+            type_line="Land",
+        )
+        main_deck.append((nonbasic_land, 2))
+
+        result = validator.validate_deck(commander, main_deck)
+
+        assert not result.valid
+        assert any(error.error_type == "duplicate" for error in result.errors)
+
     def test_validation_warnings_are_visible(self):
         validator = LegalityValidator()
         commander = make_commander("cmd-001", "Test Commander", ["W"])

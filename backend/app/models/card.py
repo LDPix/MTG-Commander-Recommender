@@ -10,6 +10,12 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+def is_basic_land_type_line(type_line: str) -> bool:
+    """Return True when a type line has both the Basic supertype and Land type."""
+    parts = type_line.replace("—", " ").replace(" - ", " ").split()
+    return "Basic" in parts and "Land" in parts
+
+
 class CardFace(BaseModel):
     """Represents one face of a modal double-faced card (MDFC) or transform card."""
 
@@ -49,7 +55,7 @@ class CardData(BaseModel):
     @property
     def is_basic_land(self) -> bool:
         """Return True if this card is a basic land."""
-        return "Basic Land" in self.type_line
+        return is_basic_land_type_line(self.type_line)
 
     @property
     def is_land(self) -> bool:

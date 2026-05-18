@@ -1,6 +1,8 @@
 """SC-DECK-011: composite card quality score for role-slot tiebreaking."""
 from __future__ import annotations
 
+import math
+
 from app.models.card import CardData
 from app.recommendation.quality_overrides import get_quality_override
 
@@ -36,10 +38,12 @@ def _is_instant_speed(card: CardData) -> bool:
 
 
 def format_staple_score(card: CardData) -> float:
-    """Normalize EDHREC popularity so lower rank produces a higher score."""
+    """Normalize EDHREC popularity using log decay. Lower rank → higher score."""
     if card.edhrec_rank is None:
         return 0.0
-    return max(0.0, 1.0 - (card.edhrec_rank / _MAX_EDHREC_RANK))
+    if card.edhrec_rank <= 0:
+        return 1.0
+    return max(0.0, 1.0 - math.log(card.edhrec_rank + 1) / math.log(_MAX_EDHREC_RANK + 1))
 
 
 def rarity_hint(card: CardData) -> float:
@@ -117,7 +121,14 @@ def compute_quality_score(
     if override is not None:
         return override
 
-    commander_inclusion = 0.5
+    # Hierarchical fallback: when n_commander_decks = 0 (no per-commander data),
+    # use color_identity_inclusion_rate proxied by edhrec_rank.
+    # Stub at 0.5 is contraindicated — it inflates all scores above the 0.35 threshold.
+    # commander_weight = n / (n + 100) → 0 when n = 0, so:
+    #   commander_inclusion = 0 × specific_rate + 1 × color_identity_rate
+    #                       = format_staple_score(card)
+    # Per-commander rates can be injected via quality_overrides when available.
+    commander_inclusion = format_staple_score(card)
     score = (
         0.40 * commander_inclusion
         + 0.25 * format_staple_score(card)

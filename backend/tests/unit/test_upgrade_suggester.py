@@ -101,7 +101,7 @@ def test_upgrade_suggester_prioritizes_underfilled_roles() -> None:
 
 def test_upgrade_suggester_groups_by_priority_deterministically() -> None:
     core = _card("a-core", "A Core", False, ["RAMP"], 0.8)
-    optional = _card("b-optional", "B Optional", False, ["PAYOFF"], 0.1)
+    optional = _card("b-optional", "B Optional", False, ["WIN_CONDITION"], 0.1)
     package_card = _card("c-package", "C Package", False, ["TOKEN_MAKER"], 0.3)
     package = PackageCluster(
         package_id="pkg-sacrifice",
@@ -112,7 +112,7 @@ def test_upgrade_suggester_groups_by_priority_deterministically() -> None:
     )
     deck = _deck([
         _card("deck-1", "Deck 1", True, ["TOKEN_MAKER"], 0.2, ["pkg-sacrifice"]),
-        _card("deck-2", "Deck 2", True, ["PAYOFF"], 0.2, ["pkg-sacrifice"]),
+        _card("deck-2", "Deck 2", True, ["WIN_CONDITION"], 0.2, ["pkg-sacrifice"]),
         _card("deck-3", "Deck 3", True, ["SACRIFICE_OUTLET"], 0.2, ["pkg-sacrifice"]),
     ])
 
@@ -136,22 +136,22 @@ def test_upgrade_suggester_groups_by_priority_deterministically() -> None:
 
 
 def test_upgrade_suggester_reason_references_role_or_package() -> None:
-    card = _card("missing-payoff", "Missing Payoff", False, ["PAYOFF"], 0.1, ["pkg-value"])
+    card = _card("missing-payoff", "Missing Payoff", False, ["WIN_CONDITION"], 0.1, ["pkg-value"])
     package = PackageCluster(
         package_id="pkg-value",
         label="green value package",
         confidence=0.7,
         card_oracle_ids=["missing-payoff", "deck-1"],
-        top_roles=["PAYOFF"],
+        top_roles=["WIN_CONDITION"],
     )
 
     suggestions = UpgradeSuggester().suggest(
         commander=_commander(),
-        generated_deck=_deck([_card("deck-1", "Deck 1", True, ["PAYOFF"], 0.2)]),
+        generated_deck=_deck([_card("deck-1", "Deck 1", True, ["WIN_CONDITION"], 0.2)]),
         candidate_pool=[card],
         packages=[package],
         quota_status=[],
     )
 
     reason = suggestions[0].reason
-    assert "PAYOFF" in reason or "green value package" in reason
+    assert "WIN_CONDITION" in reason or "green value package" in reason

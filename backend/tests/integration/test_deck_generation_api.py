@@ -1,7 +1,10 @@
 """Integration tests for the deck generation API (SC-API-003)."""
 from __future__ import annotations
 
-from tests.conftest import MEREN_ORACLE_ID
+from app.api.v1.deck import _build_saved_deck_service, _build_service
+from app.main import app
+from app.models.deck import DeckCard, GeneratedDeck, StrategicCoherenceReport
+from tests.conftest import GRETA_ORACLE_ID, MEREN_ORACLE_ID
 
 ENDPOINT = "/api/v1/decks/generate"
 EXPORT_ENDPOINT = "/api/v1/decks/export/plaintext"
@@ -22,6 +25,31 @@ class TestDeckGenerationAPI:
         data = resp.json()
         assert "deck_id" in data
         assert data["session_id"] == seeded_collection
+        assert data["generation_status"] in {"success", "failed_quality", "generated_with_collection_gap"}
+        if data["generation_status"] == "failed_quality":
+            assert any("Deck quality failure" in warning for warning in data["warnings"])
+        if data["generation_status"] == "generated_with_collection_gap":
+            assert any("collection_gap:" in warning for warning in data["warnings"])
+
+    def test_api_marks_validation_error_as_generation_failure(self, api_client):
+        """Invalid service output is clearly surfaced as failed validation."""
+        invalid_deck = _invalid_generated_deck()
+        saved_service = _FakeSavedDeckService()
+
+        app.dependency_overrides[_build_service] = lambda: _FakeDeckService(invalid_deck)
+        app.dependency_overrides[_build_saved_deck_service] = lambda: saved_service
+        try:
+            resp = _generate(api_client, "invalid-session", "invalid-cmd")
+        finally:
+            app.dependency_overrides.pop(_build_service, None)
+            app.dependency_overrides.pop(_build_saved_deck_service, None)
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["is_valid"] is False
+        assert data["generation_status"] == "failed_validation"
+        assert data["validation_errors"] == ["Deck contains duplicate non-basic cards."]
+        assert saved_service.saved is False
 
     def test_deck_generation_api_returns_99_main_deck_cards(
         self, api_client, seeded_collection
@@ -58,6 +86,21 @@ class TestDeckGenerationAPI:
             assert "target_max" in q
             assert "actual_count" in q
             assert "is_satisfied" in q
+
+    def test_deck_generation_api_includes_quota_credit_fields(
+        self, api_client, seeded_collection
+    ):
+        """Response exposes role-credit quota status for each tracked role."""
+        resp = _generate(api_client, seeded_collection, MEREN_ORACLE_ID)
+        assert resp.status_code == 200
+        quota_status = resp.json()["quota_status"]
+        assert quota_status
+        for q in quota_status:
+            assert "credit_sum" in q
+            assert isinstance(q["credit_sum"], (float, int))
+            assert "credit_satisfied" in q
+            assert isinstance(q["credit_satisfied"], bool)
+            assert "credit_warning" in q
 
     def test_deck_generation_api_marks_missing_cards(
         self, api_client, seeded_collection
@@ -168,11 +211,25 @@ class TestDeckGenerationAPI:
         }
         assert deck_ids <= explanation_ids
 
+    def test_deck_generation_api_includes_strategic_coherence(
+        self, api_client, seeded_collection
+    ):
+        resp = _generate(api_client, seeded_collection, MEREN_ORACLE_ID)
+        assert resp.status_code == 200
+        coherence = resp.json()["strategic_coherence"]
+        assert coherence is not None
+        assert "primary_plan" in coherence
+        assert "confidence" in coherence
+        assert "warning_card_oracle_ids" in coherence
+        assert isinstance(coherence["warnings"], list)
+
     def test_plaintext_export_api_returns_text(self, api_client, seeded_collection):
         deck_resp = _generate(api_client, seeded_collection, MEREN_ORACLE_ID)
         assert deck_resp.status_code == 200
+        deck = deck_resp.json()
+        deck["generation_status"] = "success"
 
-        resp = api_client.post(EXPORT_ENDPOINT, json={"deck": deck_resp.json()})
+        resp = api_client.post(EXPORT_ENDPOINT, json={"deck": deck})
 
         assert resp.status_code == 200
         data = resp.json()
@@ -180,12 +237,28 @@ class TestDeckGenerationAPI:
         assert "Commander" in data["text"]
         assert "Main Deck" in data["text"]
 
+    def test_invalid_generated_deck_not_exportable(
+        self, api_client, seeded_collection
+    ):
+        deck_resp = _generate(api_client, seeded_collection, MEREN_ORACLE_ID)
+        assert deck_resp.status_code == 200
+        deck = deck_resp.json()
+        deck["is_valid"] = False
+        deck["generation_status"] = "failed_validation"
+        deck["validation_errors"] = ["Deck contains duplicate non-basic cards."]
+
+        resp = api_client.post(EXPORT_ENDPOINT, json={"deck": deck})
+
+        assert resp.status_code == 422
+        assert "invalid generated deck" in resp.text
+
     def test_plaintext_export_api_preserves_generated_deck_quantities(
         self, api_client, seeded_collection
     ):
         deck_resp = _generate(api_client, seeded_collection, MEREN_ORACLE_ID)
         assert deck_resp.status_code == 200
         deck = deck_resp.json()
+        deck["generation_status"] = "success"
         exported = api_client.post(EXPORT_ENDPOINT, json={"deck": deck})
 
         assert exported.status_code == 200
@@ -199,6 +272,7 @@ class TestDeckGenerationAPI:
         deck_resp = _generate(api_client, seeded_collection, MEREN_ORACLE_ID)
         assert deck_resp.status_code == 200
         deck = deck_resp.json()
+        deck["generation_status"] = "success"
         deck["main_deck"][0]["is_owned"] = False
 
         exported = api_client.post(EXPORT_ENDPOINT, json={"deck": deck})
@@ -213,9 +287,97 @@ class TestDeckGenerationAPI:
         deck_resp = _generate(api_client, seeded_collection, MEREN_ORACLE_ID)
         assert deck_resp.status_code == 200
         deck = deck_resp.json()
+        deck["generation_status"] = "success"
         deck["commander"]["name"] = "API Supplied Commander"
 
         exported = api_client.post(EXPORT_ENDPOINT, json={"deck": deck})
 
         assert exported.status_code == 200
         assert "1 API Supplied Commander" in exported.json()["text"]
+
+
+class TestGretaDeckGenerationAPI:
+    """SC-DECK-035: Archetype quota profile integration tests for food-sacrifice."""
+
+    def test_greta_deck_includes_aristocrats_synergy_cards(
+        self, api_client, seeded_greta_collection
+    ):
+        """Greta deck with food-sacrifice profile contains at least one ARISTOCRATS_SYNERGY card."""
+        resp = _generate(api_client, seeded_greta_collection, GRETA_ORACLE_ID)
+        assert resp.status_code == 200
+        data = resp.json()
+        all_roles = [role for card in data["main_deck"] for role in card.get("roles", [])]
+        assert "ARISTOCRATS_SYNERGY" in all_roles, (
+            "Expected at least one ARISTOCRATS_SYNERGY card in Greta deck"
+        )
+
+    def test_greta_deck_quota_status_shows_aristocrats_synergy_satisfied(
+        self, api_client, seeded_greta_collection
+    ):
+        """Greta deck quota_status includes ARISTOCRATS_SYNERGY entry with is_satisfied=True."""
+        resp = _generate(api_client, seeded_greta_collection, GRETA_ORACLE_ID)
+        assert resp.status_code == 200
+        data = resp.json()
+        quota_status = data["quota_status"]
+        synergy_quota = next(
+            (q for q in quota_status if q["role"] == "ARISTOCRATS_SYNERGY"), None
+        )
+        assert synergy_quota is not None, "ARISTOCRATS_SYNERGY quota must be present for food-sacrifice plan"
+        assert synergy_quota["is_satisfied"], (
+            f"ARISTOCRATS_SYNERGY quota not satisfied: {synergy_quota}"
+        )
+
+
+class _FakeDeckService:
+    def __init__(self, deck: GeneratedDeck) -> None:
+        self._deck = deck
+
+    def generate_deck(self, session_id: str, commander_oracle_id: str) -> GeneratedDeck:
+        return self._deck
+
+
+class _FakeSavedDeckService:
+    def __init__(self) -> None:
+        self.saved = False
+
+    def save_generated_deck(self, deck) -> None:
+        self.saved = True
+
+
+def _invalid_generated_deck() -> GeneratedDeck:
+    return GeneratedDeck(
+        deck_id="invalid-deck",
+        session_id="invalid-session",
+        generation_status="failed_validation",
+        commander=DeckCard(
+            oracle_id="invalid-cmd",
+            name="Invalid Commander",
+            is_owned=True,
+            quantity=1,
+            roles=["COMMANDER"],
+            selection_reason="test commander",
+        ),
+        main_deck=[
+            DeckCard(
+                oracle_id="duplicate-nonbasic",
+                name="Duplicate Nonbasic",
+                is_owned=True,
+                quantity=2,
+                roles=["WIN_CONDITION"],
+                selection_reason="invalid duplicate",
+            )
+        ],
+        role_breakdown={"WIN_CONDITION": 2},
+        quota_status=[],
+        package_breakdown=[],
+        warnings=["Generation failed validation."],
+        owned_count=2,
+        owned_percentage=2 / 99,
+        is_valid=False,
+        validation_errors=["Deck contains duplicate non-basic cards."],
+        strategic_coherence=StrategicCoherenceReport(
+            primary_plan=None,
+            confidence=0.0,
+            warnings=["Generation failed validation."],
+        ),
+    )

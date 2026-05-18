@@ -20,6 +20,8 @@ class DeckCard(BaseModel):
     is_owned: bool
     quantity: int = 1  # >1 only for basic lands
     roles: list[str]
+    assigned_role: str | None = None
+    secondary_role_credit: dict[str, float] = Field(default_factory=dict)
     color_identity: list[str] = Field(default_factory=list)
     package_ids: list[str] = Field(default_factory=list)
     selection_reason: str = ""
@@ -33,6 +35,9 @@ class QuotaStatus(BaseModel):
     actual_count: int
     is_satisfied: bool
     warning: str | None = None
+    credit_sum: float = 0.0          # SC-DECK-013: sum of role_quality_credit() across cards
+    credit_satisfied: bool = True    # True when credit_sum >= target_min
+    credit_warning: str | None = None
 
 
 class PackageCluster(BaseModel):
@@ -41,6 +46,9 @@ class PackageCluster(BaseModel):
     confidence: float
     card_oracle_ids: list[str]
     top_roles: list[str]
+    activation_status: str = "detected"
+    selected_count: int = 0
+    raw_selected_count: int = 0
 
 
 class UpgradeSuggestion(BaseModel):
@@ -65,9 +73,21 @@ class CardExplanation(BaseModel):
     is_owned: bool
 
 
+class StrategicCoherenceReport(BaseModel):
+    primary_plan: str | None = None
+    confidence: float = 0.0
+    active_package_ids: list[str] = Field(default_factory=list)
+    on_plan_count: int = 0
+    off_plan_count: int = 0
+    warning_card_oracle_ids: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    confidence_cap_reasons: list[str] = Field(default_factory=list)
+
+
 class GeneratedDeck(BaseModel):
     deck_id: str
     session_id: str
+    generation_status: str = "success"
     commander: DeckCard
     main_deck: list[DeckCard]  # exactly 99 cards (with quantities)
     role_breakdown: dict[str, int]
@@ -81,3 +101,4 @@ class GeneratedDeck(BaseModel):
     upgrade_suggestions: list[UpgradeSuggestion] = Field(default_factory=list)
     card_explanations: dict[str, CardExplanation] = Field(default_factory=dict)
     score_logs: list[ScoreLog] = Field(default_factory=list)
+    strategic_coherence: StrategicCoherenceReport | None = None

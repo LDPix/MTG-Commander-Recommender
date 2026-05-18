@@ -1,0 +1,86 @@
+{
+  "fixture_id": "toluz_incoherent_generic_pile",
+  "description": "Dimir Toluz, Clever Conductor deck with off-plan generic blue/black creatures and draw engines that ignore connive and discard synergy. Coherence gate should flag off-plan cards.",
+  "expected_outcome": "warning_or_repair",
+  "commander": {
+    "id": "toluz-clever-conductor-001",
+    "oracle_id": "toluz-clever-conductor-001",
+    "name": "Toluz, Clever Conductor",
+    "color_identity": ["B", "U"],
+    "legalities": {"commander": "legal"},
+    "type_line": "Legendary Creature - Human Rogue",
+    "oracle_text": "Connive (Whenever this creature deals combat damage to a player, draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)",
+    "mana_cost": "{1}{U}{B}",
+    "cmc": 3.0,
+    "keywords": ["Connive"],
+    "rarity": "uncommon",
+    "edhrec_rank": 9000
+  },
+  "cards": [
+    {
+      "oracle_id": "toluz-off-plan-001",
+      "name": "Generic Blocker",
+      "roles": ["WIN_CONDITION"],
+      "type_line": "Creature - Construct",
+      "oracle_text": "Defender.",
+      "cmc": 2.0
+    },
+    {
+      "oracle_id": "toluz-off-plan-002",
+      "name": "Flicker Effect",
+      "roles": ["BLINK_SYNERGY"],
+      "type_line": "Instant",
+      "oracle_text": "Exile target creature you control, then return it to the battlefield under its owner's control.",
+      "cmc": 2.0
+    },
+    {
+      "oracle_id": "toluz-off-plan-003",
+      "name": "Vanilla Beater",
+      "roles": ["WIN_CONDITION"],
+      "type_line": "Creature - Zombie",
+      "oracle_text": "",
+      "cmc": 5.0
+    },
+    {
+      "oracle_id": "toluz-off-plan-004",
+      "name": "Draw Two Spell",
+      "roles": ["CARD_DRAW"],
+      "type_line": "Instant",
+      "oracle_text": "Draw two cards.",
+      "cmc": 3.0
+    },
+    {
+      "oracle_id": "toluz-off-plan-005",
+      "name": "Colorless Beater",
+      "roles": ["WIN_CONDITION"],
+      "type_line": "Artifact Creature - Golem",
+      "oracle_text": "Trample.",
+      "cmc": 6.0
+    },
+    {
+      "oracle_id": "toluz-on-plan-001",
+      "name": "Looting Effect",
+      "roles": ["CARD_DRAW"],
+      "type_line": "Enchantment",
+      "oracle_text": "Whenever a creature connives, draw a card, then discard a card.",
+      "cmc": 3.0
+    },
+    {
+      "oracle_id": "toluz-removal-001",
+      "name": "Black Removal",
+      "roles": ["SPOT_REMOVAL"],
+      "type_line": "Instant",
+      "oracle_text": "Destroy target creature.",
+      "cmc": 2.0
+    }
+  ],
+  "unsupported_package": {
+    "package_id": "blink-synergy",
+    "label": "blink/ETB package",
+    "confidence": 0.55,
+    "card_oracle_ids": [
+      "toluz-off-plan-002"
+    ],
+    "top_roles": ["BLINK_SYNERGY"]
+  }
+}

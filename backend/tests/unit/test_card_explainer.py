@@ -55,24 +55,24 @@ def test_card_explainer_returns_explanation_for_each_deck_card() -> None:
 
 def test_card_explainer_uses_actual_roles_and_packages() -> None:
     deck = _deck([
-        _card("payoff", "Payoff", True, ["PAYOFF"], ["pkg-aristocrats"]),
+        _card("payoff", "Payoff", True, ["WIN_CONDITION"], ["pkg-aristocrats"]),
     ])
     package = PackageCluster(
         package_id="pkg-aristocrats",
         label="aristocrats package",
         confidence=0.9,
         card_oracle_ids=["payoff"],
-        top_roles=["PAYOFF"],
+        top_roles=["WIN_CONDITION"],
     )
 
     explanations = CardExplainer().explain_deck(
         deck,
         [package],
-        [QuotaStatus(role="PAYOFF", target_min=1, target_max=4, actual_count=1, is_satisfied=True)],
+        [QuotaStatus(role="WIN_CONDITION", target_min=1, target_max=4, actual_count=1, is_satisfied=True)],
     )
 
     explanation = explanations["payoff"]
-    assert explanation.roles == ["PAYOFF"]
+    assert explanation.roles == ["WIN_CONDITION"]
     assert explanation.package_ids == ["pkg-aristocrats"]
     assert any("aristocrats package" in evidence for evidence in explanation.evidence)
 

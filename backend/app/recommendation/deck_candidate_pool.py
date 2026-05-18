@@ -3,11 +3,6 @@ from __future__ import annotations
 
 from app.models.card import CardData
 from app.models.deck import DeckCard
-from app.recommendation.colorless_rules import (
-    C_REQUIREMENT_MIN_SOURCES,
-    has_c_mana_requirement,
-    is_dedicated_colorless_source,
-)
 from app.recommendation.mana_base_rules import (
     commander_is_colorless,
     is_c_only_land,
@@ -24,6 +19,13 @@ COLOR_TO_BASIC_LAND: dict[str, str] = {
     "R": "Mountain",
     "G": "Forest",
 }
+
+# SC-MANA-007: regular canonical basics are virtual permanent inventory —
+# every collection is treated as having unlimited copies.
+# Snow-covered basics are intentionally excluded (real acquisition cost).
+CANONICAL_BASIC_LAND_NAMES: frozenset[str] = frozenset({
+    "Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
+})
 
 
 def _land_is_eligible(
@@ -65,7 +67,6 @@ class DeckCandidatePool:
         - Exclude the commander itself
         - SC-MANA-002: Exclude fixing lands from mono-color decks
         - SC-MANA-004: Exclude {C}-only lands from non-colorless decks
-        - SC-DECK-010: Exclude {C}-requirement cards when colorless sources < threshold
         - Mark is_owned correctly
         - Populate color_identity from card data
         - Deduplicate by oracle_id (singleton)
@@ -73,13 +74,6 @@ class DeckCandidatePool:
         - Cap at max_pool_size
         """
         commander_colors = set(commander.color_identity)
-
-        # SC-DECK-010: Count dedicated colorless sources in owned cards
-        colorless_source_count = sum(
-            1 for card in owned_cards
-            if is_dedicated_colorless_source(card.oracle_text, card.type_line)
-        )
-        allow_c_requirement_cards = colorless_source_count >= C_REQUIREMENT_MIN_SOURCES
 
         seen: set[str] = set()
         owned_pool: list[DeckCard] = []
@@ -102,19 +96,15 @@ class DeckCandidatePool:
             if not _land_is_eligible(card, commander.color_identity):
                 continue
 
-            # SC-DECK-010: Exclude {C}-requirement cards without enough colorless sources
-            if not allow_c_requirement_cards and has_c_mana_requirement(
-                card.mana_cost,
-                card.oracle_text,
-            ):
-                continue
-
             # Skip duplicates
             if card.oracle_id in seen:
                 continue
             seen.add(card.oracle_id)
 
             is_owned = card.oracle_id in owned_oracle_ids
+            # SC-MANA-007: canonical regular basics are always obtainable.
+            if not is_owned and card.name in CANONICAL_BASIC_LAND_NAMES and card.is_basic_land:
+                is_owned = True
             roles = [tag.role.value for tag in role_tags.get(card.oracle_id, [])]
 
             deck_card = DeckCard(
@@ -152,7 +142,7 @@ def _free_basic_lands_for_missing_colors(
     all_cards: list[CardData],
     role_tags: dict[str, list[RoleTag]],
 ) -> list[DeckCard]:
-    """Inject unowned regular basic land candidates for commander colors."""
+    """Inject virtual-owned regular basic land candidates for commander colors."""
     basic_names_in_pool = {card.name for card in current_pool}
     free_basics: list[DeckCard] = []
 
@@ -175,7 +165,7 @@ def _free_basic_lands_for_missing_colors(
             DeckCard(
                 oracle_id=basic_card.oracle_id,
                 name=basic_card.name,
-                is_owned=False,
+                is_owned=True,  # SC-MANA-007: virtual inventory
                 quantity=1,
                 roles=[tag.role.value for tag in role_tags.get(basic_card.oracle_id, [])],
                 color_identity=list(basic_card.color_identity),

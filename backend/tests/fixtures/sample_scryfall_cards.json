@@ -1276,8 +1276,8 @@
     "prints_search_uri": null
   },
   {
-    "id": "aa000051-0000-4000-0000-000000000051",
-    "oracle_id": "aa000051-0000-4000-0000-000000000051",
+    "id": "f82a4e85-526d-4456-b700-7760043a31be",
+    "oracle_id": "f82a4e85-526d-4456-b700-7760043a31be",
     "name": "Viscera Seer",
     "color_identity": [
       "B"
@@ -1297,8 +1297,8 @@
     "prints_search_uri": null
   },
   {
-    "id": "aa000052-0000-4000-0000-000000000052",
-    "oracle_id": "aa000052-0000-4000-0000-000000000052",
+    "id": "d64e9152-ef24-4394-aeb0-9c3befc56549",
+    "oracle_id": "d64e9152-ef24-4394-aeb0-9c3befc56549",
     "name": "Altar of Dementia",
     "color_identity": [],
     "legalities": {
@@ -1316,8 +1316,8 @@
     "prints_search_uri": null
   },
   {
-    "id": "aa000053-0000-4000-0000-000000000053",
-    "oracle_id": "aa000053-0000-4000-0000-000000000053",
+    "id": "4d18bcba-a346-445e-a182-6cc30b7e066d",
+    "oracle_id": "4d18bcba-a346-445e-a182-6cc30b7e066d",
     "name": "Ashnod's Altar",
     "color_identity": [],
     "legalities": {
@@ -1335,8 +1335,8 @@
     "prints_search_uri": null
   },
   {
-    "id": "aa000054-0000-4000-0000-000000000054",
-    "oracle_id": "aa000054-0000-4000-0000-000000000054",
+    "id": "a1cc5e37-b09a-4b7f-afd5-77c1c35aa425",
+    "oracle_id": "a1cc5e37-b09a-4b7f-afd5-77c1c35aa425",
     "name": "Carrion Feeder",
     "color_identity": [
       "B"
@@ -1377,8 +1377,8 @@
     "prints_search_uri": null
   },
   {
-    "id": "aa000056-0000-4000-0000-000000000056",
-    "oracle_id": "aa000056-0000-4000-0000-000000000056",
+    "id": "310f141c-7f37-4729-aed6-dd9c09db448d",
+    "oracle_id": "310f141c-7f37-4729-aed6-dd9c09db448d",
     "name": "Blood Artist",
     "color_identity": [
       "B"
@@ -1398,8 +1398,8 @@
     "prints_search_uri": null
   },
   {
-    "id": "aa000057-0000-4000-0000-000000000057",
-    "oracle_id": "aa000057-0000-4000-0000-000000000057",
+    "id": "76b003e0-15af-4f22-bdf2-1ade5430964a",
+    "oracle_id": "76b003e0-15af-4f22-bdf2-1ade5430964a",
     "name": "Zulaport Cutthroat",
     "color_identity": [
       "B"
@@ -1419,8 +1419,8 @@
     "prints_search_uri": null
   },
   {
-    "id": "aa000058-0000-4000-0000-000000000058",
-    "oracle_id": "aa000058-0000-4000-0000-000000000058",
+    "id": "7c777a41-e40a-4b40-96bf-8ddd5c12924c",
+    "oracle_id": "7c777a41-e40a-4b40-96bf-8ddd5c12924c",
     "name": "Dictate of Erebos",
     "color_identity": [
       "B"
@@ -1442,8 +1442,8 @@
     "prints_search_uri": null
   },
   {
-    "id": "aa000059-0000-4000-0000-000000000059",
-    "oracle_id": "aa000059-0000-4000-0000-000000000059",
+    "id": "6f4ac4a4-53ec-4bc9-8f5c-d4b801d867b2",
+    "oracle_id": "6f4ac4a4-53ec-4bc9-8f5c-d4b801d867b2",
     "name": "Grave Pact",
     "color_identity": [
       "B"
@@ -1463,8 +1463,8 @@
     "prints_search_uri": null
   },
   {
-    "id": "aa000060-0000-4000-0000-000000000060",
-    "oracle_id": "aa000060-0000-4000-0000-000000000060",
+    "id": "c7f33cea-2ec8-4081-9208-a5b1d86721b3",
+    "oracle_id": "c7f33cea-2ec8-4081-9208-a5b1d86721b3",
     "name": "Bastion of Remembrance",
     "color_identity": [
       "B"
@@ -2162,5 +2162,115 @@
     "card_faces": null,
     "layout": "normal",
     "prints_search_uri": null
+  },
+  {
+    "id": "00173df7-a584-410c-af1d-ada9c791056a",
+    "oracle_id": "00173df7-a584-410c-af1d-ada9c791056a",
+    "name": "Greta, Sweettooth Scourge",
+    "color_identity": [
+      "B",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Legendary Creature \u2014 Human Warlock",
+    "oracle_text": "Whenever you create a Food token, put a +1/+1 counter on Greta, Sweettooth Scourge.\n{1}{B}{G}, Sacrifice two Foods: Draw a card and you gain 3 life.",
+    "mana_cost": "{1}{B}{G}",
+    "cmc": 3.0,
+    "keywords": [],
+    "card_faces": null,
+    "layout": "normal",
+    "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3Agreta-sweettooth-001&unique=prints"
+  },
+  {
+    "id": "d0e810bb-5f38-4045-a718-30d423c05659",
+    "oracle_id": "d0e810bb-5f38-4045-a718-30d423c05659",
+    "name": "Poison-Tip Archer",
+    "color_identity": [
+      "B",
+      "G"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Elf Archer",
+    "oracle_text": "Reach\nDeathtouch\nWhenever another creature dies, each opponent loses 1 life.",
+    "mana_cost": "{2}{B}{G}",
+    "cmc": 4.0,
+    "keywords": [
+      "Reach",
+      "Deathtouch"
+    ],
+    "card_faces": null,
+    "layout": "normal",
+    "prints_search_uri": ""
+  },
+  {
+    "id": "043ded41-2506-4dab-91c4-142d9287e7d7",
+    "oracle_id": "043ded41-2506-4dab-91c4-142d9287e7d7",
+    "name": "Skyclave Shadowcat",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Cat Horror",
+    "oracle_text": "{1}{B}, Sacrifice another creature: Put a +1/+1 counter on this creature.\nWhenever a creature you control with a +1/+1 counter on it dies, draw a card.",
+    "mana_cost": "{3}{B}",
+    "cmc": 4.0,
+    "keywords": [],
+    "card_faces": null,
+    "layout": "normal",
+    "prints_search_uri": ""
+  },
+  {
+    "id": "4cdbc466-42fc-471f-beab-397caec18101",
+    "oracle_id": "4cdbc466-42fc-471f-beab-397caec18101",
+    "name": "Vengeful Bloodwitch",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Vampire Warlock",
+    "oracle_text": "Whenever this creature or another creature you control dies, target opponent loses 1 life and you gain 1 life.",
+    "mana_cost": "{1}{B}",
+    "cmc": 2.0,
+    "keywords": [],
+    "card_faces": null,
+    "layout": "normal",
+    "prints_search_uri": ""
+  },
+  {
+    "id": "11ad664e-36d3-4d5b-8a87-59ea715877e0",
+    "oracle_id": "11ad664e-36d3-4d5b-8a87-59ea715877e0",
+    "name": "Vindictive Vampire",
+    "color_identity": [
+      "B"
+    ],
+    "legalities": {
+      "commander": "legal",
+      "standard": "not_legal",
+      "vintage": "legal"
+    },
+    "type_line": "Creature \u2014 Vampire",
+    "oracle_text": "Whenever another creature you control dies, this creature deals 1 damage to each opponent and you gain 1 life.",
+    "mana_cost": "{3}{B}",
+    "cmc": 4.0,
+    "keywords": [],
+    "card_faces": null,
+    "layout": "normal",
+    "prints_search_uri": ""
   }
 ]

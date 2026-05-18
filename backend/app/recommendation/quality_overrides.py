@@ -26,7 +26,6 @@ QUALITY_OVERRIDES: list[QualityOverride] = [
     QualityOverride("7aebf4a5-1e2d-4f3a-b6c7-8d9e0f1a2b3c", 0.95),
     QualityOverride("aa000037-0000-4000-0000-000000000037", 0.90),
     QualityOverride("9cdf06c7-3a4f-6b5c-d8e9-0f1a2b3c4d5e", 0.95, "archetype", "aristocrats"),
-    QualityOverride("aa000056-0000-4000-0000-000000000056", 0.90, "archetype", "aristocrats"),
     # Production oracle IDs from backend/data/oracle-cards.json.
     QualityOverride("6ad8011d-3471-4369-9d68-b264cc027487", 1.00),
     QualityOverride("0bc7f093-bef0-4f1a-852c-4b75ebf54838", 0.95),

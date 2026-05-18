@@ -44,4 +44,7 @@ class PackageLabeler:
             confidence=cluster.confidence,
             card_oracle_ids=cluster.card_oracle_ids,
             top_roles=cluster.top_roles,
+            activation_status=cluster.activation_status,
+            selected_count=cluster.selected_count,
+            raw_selected_count=cluster.raw_selected_count,
         )

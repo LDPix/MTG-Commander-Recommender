@@ -128,7 +128,9 @@ def api_client(sample_card_resolver: CardResolver):
 # ---------------------------------------------------------------------------
 
 MEREN_ORACLE_ID = "4b2521bc-8f94-1a0b-c3d4-5e6f7a8b9c0d"
+GRETA_ORACLE_ID = "00173df7-a584-410c-af1d-ada9c791056a"  # Greta, Sweettooth Scourge
 DECK_TEST_SESSION = "deck-test-session-001"
+GRETA_TEST_SESSION = "greta-test-session-001"
 
 
 @pytest.fixture
@@ -149,3 +151,23 @@ def seeded_collection(api_client):
     )
     assert resp.status_code == 200, f"Collection import failed: {resp.text}"
     return DECK_TEST_SESSION
+
+
+@pytest.fixture
+def seeded_greta_collection(api_client):
+    """Import a B/G food-sacrifice collection that supports Greta as commander.
+
+    Returns the session_id so deck generation tests can reference it.
+    """
+    import io
+
+    from tests.fixtures.sample_csv_collections import GRETA_COLLECTION_CSV
+
+    file = io.BytesIO(GRETA_COLLECTION_CSV.encode())
+    resp = api_client.post(
+        "/api/v1/collections/import",
+        files={"file": ("collection.csv", file, "text/csv")},
+        headers={"X-Session-Id": GRETA_TEST_SESSION},
+    )
+    assert resp.status_code == 200, f"Greta collection import failed: {resp.text}"
+    return GRETA_TEST_SESSION

@@ -1,9 +1,23 @@
 """Tests for SC-CMD-005: commander support confidence tier."""
 from __future__ import annotations
 
+from pathlib import Path
+
+from app.data_pipeline.card_resolver import CardResolver
+from app.data_pipeline.scryfall_ingest import load_scryfall_bulk_data
+from app.models.deck import DeckCard, GeneratedDeck, StrategicCoherenceReport
+from app.services.deck_generation_service import _build_deck_score_logs
 from app.recommendation.commander_pool import CommanderPool
 from app.recommendation.commander_profiles import (
     COMMANDER_SUPPORT_TIERS,
+    GRETA_FIXTURE_ORACLE_ID,
+    GRETA_REAL_ORACLE_ID,
+    TOLUZ_FIXTURE_ORACLE_ID,
+    TOLUZ_REAL_ORACLE_ID,
+    get_commander_profile_source,
+    get_commander_negative_evidence,
+    get_commander_plan_override,
+    get_commander_positive_evidence,
     get_support_tier,
 )
 from app.recommendation.commander_recommender import CommanderRecommender
@@ -111,3 +125,122 @@ def test_fallback_recommendation_support_tier(sample_card_resolver) -> None:
 
     fallback_recs = [r for r in recs if r.oracle_id not in COMMANDER_SUPPORT_TIERS]
     assert all(r.support_tier == "fallback" for r in fallback_recs)
+
+
+# ---------------------------------------------------------------------------
+# SC-DECK-020: Plan overrides and evidence helpers
+# ---------------------------------------------------------------------------
+
+GRETA_ORACLE_ID = GRETA_FIXTURE_ORACLE_ID
+TOLUZ_ORACLE_ID = TOLUZ_FIXTURE_ORACLE_ID
+REAL_CATALOG_PATH = Path(__file__).parents[2] / "data" / "oracle-cards.json"
+
+
+def test_get_commander_plan_override_returns_plan_for_known_id() -> None:
+    assert get_commander_plan_override(GRETA_ORACLE_ID) == "food-sacrifice"
+    assert get_commander_plan_override(TOLUZ_ORACLE_ID) == "connive"
+
+
+def test_get_commander_plan_override_returns_none_for_unknown_id() -> None:
+    assert get_commander_plan_override(UNKNOWN_ORACLE_ID) is None
+
+
+def test_get_commander_positive_evidence_returns_signals() -> None:
+    signals = get_commander_positive_evidence(GRETA_ORACLE_ID)
+    assert isinstance(signals, tuple)
+    assert len(signals) > 0
+    assert "food" in signals
+
+
+def test_get_commander_negative_evidence_returns_signals() -> None:
+    signals = get_commander_negative_evidence(GRETA_ORACLE_ID)
+    assert isinstance(signals, tuple)
+    assert "treasure" in signals
+
+
+def test_get_commander_positive_evidence_empty_for_unknown() -> None:
+    assert get_commander_positive_evidence(UNKNOWN_ORACLE_ID) == ()
+
+
+def test_get_commander_negative_evidence_empty_for_unknown() -> None:
+    assert get_commander_negative_evidence(UNKNOWN_ORACLE_ID) == ()
+
+
+def test_real_greta_oracle_id_maps_to_food_sacrifice_profile() -> None:
+    resolver = _real_catalog_resolver()
+    greta = resolver.resolve("Greta, Sweettooth Scourge")
+
+    assert greta.oracle_id == GRETA_REAL_ORACLE_ID
+    assert get_commander_plan_override(greta.oracle_id) == "food-sacrifice"
+    assert "food" in get_commander_positive_evidence(greta.oracle_id)
+    assert "treasure" in get_commander_negative_evidence(greta.oracle_id)
+
+
+def test_real_toluz_oracle_id_maps_to_connive_profile() -> None:
+    resolver = _real_catalog_resolver()
+    toluz = resolver.resolve("Toluz, Clever Conductor")
+
+    assert toluz.oracle_id == TOLUZ_REAL_ORACLE_ID
+    assert get_commander_plan_override(toluz.oracle_id) == "connive"
+    assert "connive" in get_commander_positive_evidence(toluz.oracle_id)
+    assert "landfall" in get_commander_negative_evidence(toluz.oracle_id)
+
+
+def test_placeholder_ids_remain_supported_for_negative_fixtures() -> None:
+    assert get_commander_plan_override(GRETA_FIXTURE_ORACLE_ID) == "food-sacrifice"
+    assert get_commander_plan_override(TOLUZ_FIXTURE_ORACLE_ID) == "connive"
+
+
+def test_profile_lookup_uses_name_fallback_only_when_catalog_id_missing() -> None:
+    assert (
+        get_commander_plan_override(
+            "catalog-bootstrap-missing-greta-id",
+            "Greta, Sweettooth Scourge",
+        )
+        == "food-sacrifice"
+    )
+    assert (
+        get_commander_profile_source(
+            "catalog-bootstrap-missing-greta-id",
+            "Greta, Sweettooth Scourge",
+        )
+        == "name_fallback"
+    )
+    assert get_commander_profile_source(GRETA_REAL_ORACLE_ID, "Wrong Name") == "oracle_id"
+    assert get_commander_plan_override("unknown-id", "Unknown Commander") is None
+
+
+def test_score_log_shows_commander_profile_source() -> None:
+    deck = GeneratedDeck(
+        deck_id="profile-source-test",
+        session_id="profile-source-session",
+        commander=DeckCard(
+            oracle_id=GRETA_REAL_ORACLE_ID,
+            name="Greta, Sweettooth Scourge",
+            is_owned=True,
+            quantity=1,
+            roles=["COMMANDER"],
+            selection_reason="commander",
+        ),
+        main_deck=[],
+        role_breakdown={},
+        quota_status=[],
+        package_breakdown=[],
+        warnings=[],
+        owned_count=0,
+        owned_percentage=0.0,
+        is_valid=True,
+        validation_errors=[],
+        strategic_coherence=StrategicCoherenceReport(primary_plan="food-sacrifice"),
+    )
+
+    analysis_log = next(
+        log for log in _build_deck_score_logs("profile-source-session", deck)
+        if log.scope == "deck_analysis"
+    )
+
+    assert "commander_profile_source:oracle_id" in analysis_log.selected_reasons
+
+
+def _real_catalog_resolver() -> CardResolver:
+    return CardResolver(load_scryfall_bulk_data(REAL_CATALOG_PATH))

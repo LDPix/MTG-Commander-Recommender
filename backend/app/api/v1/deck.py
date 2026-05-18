@@ -21,6 +21,7 @@ from app.schemas.deck_schema import (
     QuotaStatusSchema,
     SavedDeckDetailResponse,
     SavedDeckListResponse,
+    StrategicCoherenceSchema,
     UpgradeSuggestionSchema,
 )
 from app.services.deck_generation_service import DeckGenerationService
@@ -50,6 +51,8 @@ def _serialize(deck: GeneratedDeck) -> GeneratedDeckResponse:
             is_owned=c.is_owned,
             quantity=c.quantity,
             roles=[r.value if hasattr(r, "value") else str(r) for r in c.roles],
+            assigned_role=c.assigned_role,
+            secondary_role_credit=c.secondary_role_credit,
             package_ids=c.package_ids,
             selection_reason=c.selection_reason,
             synergy_score=c.synergy_score,
@@ -58,6 +61,7 @@ def _serialize(deck: GeneratedDeck) -> GeneratedDeckResponse:
     return GeneratedDeckResponse(
         deck_id=deck.deck_id,
         session_id=deck.session_id,
+        generation_status=deck.generation_status,
         commander=card(deck.commander),
         main_deck=[card(c) for c in deck.main_deck],
         role_breakdown={
@@ -72,6 +76,9 @@ def _serialize(deck: GeneratedDeck) -> GeneratedDeckResponse:
                 actual_count=q.actual_count,
                 is_satisfied=q.is_satisfied,
                 warning=q.warning,
+                credit_sum=q.credit_sum,
+                credit_satisfied=q.credit_satisfied,
+                credit_warning=q.credit_warning,
             )
             for q in deck.quota_status
         ],
@@ -84,6 +91,9 @@ def _serialize(deck: GeneratedDeck) -> GeneratedDeckResponse:
                 top_roles=[
                     r.value if hasattr(r, "value") else str(r) for r in p.top_roles
                 ],
+                activation_status=p.activation_status,
+                selected_count=p.selected_count,
+                raw_selected_count=p.raw_selected_count,
             )
             for p in deck.package_breakdown
         ],
@@ -118,6 +128,20 @@ def _serialize(deck: GeneratedDeck) -> GeneratedDeckResponse:
             )
             for oracle_id, e in deck.card_explanations.items()
         },
+        strategic_coherence=(
+            StrategicCoherenceSchema(
+                primary_plan=deck.strategic_coherence.primary_plan,
+                confidence=deck.strategic_coherence.confidence,
+                active_package_ids=deck.strategic_coherence.active_package_ids,
+                on_plan_count=deck.strategic_coherence.on_plan_count,
+                off_plan_count=deck.strategic_coherence.off_plan_count,
+                warning_card_oracle_ids=deck.strategic_coherence.warning_card_oracle_ids,
+                warnings=deck.strategic_coherence.warnings,
+                confidence_cap_reasons=deck.strategic_coherence.confidence_cap_reasons,
+            )
+            if deck.strategic_coherence is not None
+            else None
+        ),
     )
 
 
@@ -129,9 +153,9 @@ def generate_deck(
 ) -> GeneratedDeckResponse:
     """Generate a Commander deck for the given session and commander.
 
-    FR-14, FR-15: On success, the generated deck is persisted as a saved
+    FR-016, FR-017: On success, the generated deck is persisted as a saved
     artifact associated with session_id and commander. The deck_id in the
-    response doubles as the saved deck id for retrieval.
+    response doubles as the saved deck id for detail retrieval.
     NFR-12: response schema is backward-compatible; deck_id was already present.
     """
     try:
@@ -145,7 +169,8 @@ def generate_deck(
         )
 
     response = _serialize(deck)
-    saved_deck_service.save_generated_deck(response)
+    if response.generation_status != "failed_validation":
+        saved_deck_service.save_generated_deck(response)
     return response
 
 
@@ -186,5 +211,14 @@ def export_plaintext_deck(request: DeckExportRequest) -> DeckExportResponse:
     FR-18: export accepts the generated deck payload and does not require
     saved deck persistence — deck_id is not needed for export.
     """
+    if (
+        request.deck.generation_status in {"failed_validation", "failed_quality"}
+        or not request.deck.is_valid
+        or request.deck.validation_errors
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Cannot export failed generated deck.",
+        )
     text, warnings = export_deck_to_plaintext(request.deck)
     return DeckExportResponse(text=text, warnings=warnings)

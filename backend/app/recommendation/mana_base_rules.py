@@ -1,8 +1,13 @@
 """SC-MANA-001/002/004: Mana base classification rules."""
 from __future__ import annotations
 
+from app.models.card import is_basic_land_type_line
+
 # Minimum basic lands for a mono-color deck (configurable)
 MONO_COLOR_BASIC_LAND_MIN: int = 20
+
+# Minimum synergy required for a utility land without active package relevance.
+UTILITY_LAND_MIN_SYNERGY_SCORE: float = 0.35
 
 # Lands whose primary purpose is color diversification.
 # Excluded from mono-color decks because they provide no functional value there.
@@ -22,6 +27,15 @@ KNOWN_FIXING_LAND_NAMES: frozenset[str] = frozenset({
 C_ONLY_LAND_NAMES: frozenset[str] = frozenset({
     "Wastes",
     "Snow-Covered Wastes",
+})
+
+KNOWN_UTILITY_LAND_NAMES: frozenset[str] = frozenset({
+    "White Lotus Hideout",
+    "The Seedcore",
+    "Eclipsed Realms",
+    "Scavenger Grounds",
+    "Mystifying Maze",
+    "Reliquary Tower",
 })
 
 _COLOR_SYMBOLS: dict[str, str] = {
@@ -88,3 +102,69 @@ def is_c_only_land(card_name: str, oracle_text: str | None) -> bool:
 def commander_is_colorless(commander_color_identity: list[str]) -> bool:
     """Return True if the commander has no colors (colorless identity)."""
     return len(commander_color_identity) == 0
+
+
+def is_utility_land(
+    card_name: str,
+    oracle_text: str | None,
+    type_line: str,
+) -> bool:
+    """Return True for non-basic lands with non-mana strategic text."""
+    if "Land" not in type_line or is_basic_land_type_line(type_line):
+        return False
+
+    if card_name in KNOWN_UTILITY_LAND_NAMES:
+        return True
+
+    text = (oracle_text or "").lower()
+    if not text:
+        return False
+
+    utility_markers = (
+        "you have no maximum hand size",
+        "target",
+        "exile",
+        "destroy",
+        "deals damage",
+        "damage to",
+        "draw",
+        "create",
+        "token",
+        "counter",
+        "graveyard",
+        "gains",
+        "gets +",
+        "activate only",
+        "spend this mana only",
+        "choose a",
+        "chosen type",
+        "lifegain",
+        "life",
+        "daybound",
+        "nightbound",
+        "enchantment",
+        "phyrexian",
+        "compleated",
+    )
+    return any(marker in text for marker in utility_markers)
+
+
+def utility_land_has_relevance(
+    card_name: str,
+    oracle_text: str | None,
+    type_line: str,
+    synergy_score: float,
+    package_ids: list[str],
+    active_package_ids: set[str],
+) -> bool:
+    """Return True when a utility land has enough deck relevance to keep."""
+    if not is_utility_land(card_name, oracle_text, type_line):
+        return True
+
+    if synergy_score >= UTILITY_LAND_MIN_SYNERGY_SCORE:
+        return True
+
+    if set(package_ids).intersection(active_package_ids):
+        return True
+
+    return False

@@ -5,17 +5,37 @@ from app.data_pipeline.card_resolver import CardNotFoundError, CardResolver
 from app.models.card import CanonicalCard, CardData
 from collections import defaultdict
 
-from app.models.deck import DeckCard, GeneratedDeck, PackageCluster
+from app.models.deck import (
+    DeckCard,
+    GeneratedDeck,
+    PackageCluster,
+    StrategicCoherenceReport,
+)
 from app.models.score_log import DATA_VERSION, ScoreLog
 from app.recommendation.card_explainer import CardExplainer
+from app.recommendation.commander_profiles import get_commander_profile_source
 from app.recommendation.deck_candidate_pool import DeckCandidatePool
 from app.recommendation.deck_generator import DeckGenerator
+from app.recommendation.legality_validator import LegalityValidator
 from app.recommendation.package_detector import PackageDetector
+from app.recommendation.package_density import (
+    active_package_ids_for_deck,
+    is_orphan,
+    packages_with_activation_status,
+)
 from app.recommendation.package_labeler import PackageLabeler
 from app.recommendation.quota_config import adjust_quotas_for_commander, BASELINE_QUOTAS as _BASELINE_QUOTAS
+from app.recommendation.role_assignment import assign_role_slots
 from app.recommendation.role_taxonomy import RoleTag
 from app.data_pipeline.scryfall_tagger import get_scryfall_tagger_store
 from app.recommendation.role_tagger import HybridTagger
+from app.recommendation.strategic_coherence import (
+    MAX_OFF_PLAN_CARDS,
+    PLAN_ROLE_HINTS,
+    StrategicCoherenceValidator,
+    _commander_supports_loose_value,
+    infer_primary_plan,
+)
 from app.recommendation.synergy_graph import RoleTagSynergyProvider, SynergyGraph, SynergyDataProvider
 from app.recommendation.upgrade_suggester import UpgradeSuggester
 from app.repositories.collection_repo import CollectionRepository
@@ -140,10 +160,12 @@ class DeckGenerationService:
         packages = [labeler.label(p) for p in packages]
 
         # Step 10: Adjust quotas
+        primary_plan_for_quotas = infer_primary_plan(commander, commander_tags)
         quotas = adjust_quotas_for_commander(
             baseline=list(_BASELINE_QUOTAS),
             commander=commander,
             commander_tags=commander_tags,
+            primary_plan=primary_plan_for_quotas,
         )
 
         # Step 11: Generate deck
@@ -161,6 +183,46 @@ class DeckGenerationService:
         )
 
         enriched_candidate_pool = _enrich_candidate_pool(candidate_pool, graph, packages)
+
+        coherence_report = StrategicCoherenceValidator().validate(
+            commander=commander,
+            commander_tags=commander_tags,
+            deck=deck,
+            all_cards_lookup=all_cards_lookup,
+            packages=packages,
+        )
+        deck.strategic_coherence = coherence_report
+
+        # SC-DECK-018: coherence repair pass
+        deck, coherence_report = _coherence_repair_pass(
+            deck=deck,
+            coherence_report=coherence_report,
+            enriched_candidate_pool=enriched_candidate_pool,
+            all_cards_lookup=all_cards_lookup,
+            commander=commander,
+            commander_tags=commander_tags,
+            packages=packages,
+        )
+        deck.strategic_coherence = coherence_report
+        deck = _refresh_deck_derived_state(
+            deck=deck,
+            commander=commander,
+            all_cards_lookup=all_cards_lookup,
+            quotas=quotas,
+            coherence_report=coherence_report,
+        )
+        deck = _finalize_coherence_fail_closed(deck=deck, packages=packages)
+        deck = _multi_pass_quality_repair(
+            deck=deck,
+            commander=commander,
+            commander_tags=commander_tags,
+            all_cards_lookup=all_cards_lookup,
+            quotas=quotas,
+            enriched_candidate_pool=enriched_candidate_pool,
+            packages=packages,
+        )
+        deck = _finalize_quality_generation_status(deck)
+
         deck.upgrade_suggestions = UpgradeSuggester().suggest(
             commander=commander,
             generated_deck=deck,
@@ -202,8 +264,974 @@ def _enrich_candidate_pool(
     ]
 
 
+_BASIC_LAND_NAMES: frozenset[str] = frozenset({
+    "Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
+    "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp",
+    "Snow-Covered Mountain", "Snow-Covered Forest",
+})
+
+
+def _coherence_repair_pass(
+    deck: GeneratedDeck,
+    coherence_report: StrategicCoherenceReport,
+    enriched_candidate_pool: list[DeckCard],
+    all_cards_lookup: dict[str, CardData],
+    commander: CardData,
+    commander_tags: list[RoleTag],
+    packages: list[PackageCluster],
+) -> tuple[GeneratedDeck, StrategicCoherenceReport]:
+    """Replace off-plan warning cards with on-plan alternatives (SC-DECK-018).
+
+    Best-effort: skips cards when no valid replacement exists.
+    Runs coherence validation once after repair and returns the updated report.
+    """
+    from app.recommendation.strategic_coherence import (
+        MAX_OFF_PLAN_CARDS,
+        REQUIRED_ROLE_FILLERS,
+        StrategicCoherenceValidator,
+    )
+
+    if not coherence_report.warning_card_oracle_ids:
+        return deck, coherence_report
+
+    main_deck = list(deck.main_deck)
+    selected_ids = {c.oracle_id for c in main_deck}
+
+    quota_counts: dict[str, int] = defaultdict(int)
+    for c in main_deck:
+        for r in c.roles:
+            quota_counts[r] += c.quantity
+    quota_mins: dict[str, int] = {
+        qs.role: qs.target_min for qs in deck.quota_status
+    }
+
+    on_plan_pool = [
+        c for c in enriched_candidate_pool
+        if c.oracle_id not in selected_ids
+        and "LAND" not in c.roles
+        and c.name not in _BASIC_LAND_NAMES
+        and _is_on_plan_candidate(c, all_cards_lookup, coherence_report, commander, packages)
+    ]
+    on_plan_pool.sort(
+        key=lambda c: (
+            not c.is_owned,
+            -c.synergy_score,
+            c.oracle_id,
+        )
+    )
+
+    repairs_done = 0
+
+    for warning_oid in coherence_report.warning_card_oracle_ids:
+        if repairs_done >= MAX_OFF_PLAN_CARDS:
+            break
+
+        card_idx = next(
+            (i for i, c in enumerate(main_deck) if c.oracle_id == warning_oid),
+            None,
+        )
+        if card_idx is None:
+            continue
+
+        warning_card = main_deck[card_idx]
+
+        if REQUIRED_ROLE_FILLERS.intersection(warning_card.roles):
+            role_safe = all(
+                quota_counts.get(r, 0) - 1 >= quota_mins.get(r, 0)
+                for r in warning_card.roles
+            )
+            if not role_safe:
+                continue
+
+        replacement = next(
+            (c for c in on_plan_pool if c.oracle_id not in selected_ids),
+            None,
+        )
+        if replacement is None:
+            break
+
+        main_deck[card_idx] = replacement.model_copy(
+            update={
+                "quantity": 1,
+                "selection_reason": f"coherence repair: replaced off-plan {warning_card.name}",
+            }
+        )
+        selected_ids.discard(warning_oid)
+        selected_ids.add(replacement.oracle_id)
+        on_plan_pool = [c for c in on_plan_pool if c.oracle_id != replacement.oracle_id]
+
+        for r in warning_card.roles:
+            quota_counts[r] = max(0, quota_counts[r] - 1)
+        for r in replacement.roles:
+            quota_counts[r] = quota_counts.get(r, 0) + 1
+
+        repairs_done += 1
+
+    updated_deck = deck.model_copy(update={"main_deck": main_deck})
+
+    new_report = StrategicCoherenceValidator().validate(
+        commander=commander,
+        commander_tags=commander_tags,
+        deck=updated_deck,
+        all_cards_lookup=all_cards_lookup,
+        packages=packages,
+    )
+
+    return updated_deck, new_report
+
+
+def _refresh_deck_derived_state(
+    deck: GeneratedDeck,
+    commander: CardData,
+    all_cards_lookup: dict[str, CardData],
+    quotas: list,
+    coherence_report: StrategicCoherenceReport,
+) -> GeneratedDeck:
+    """Rebuild fields derived from main_deck after coherence repair."""
+    assignment = assign_role_slots(deck.main_deck, quotas, all_cards_lookup)
+    main_deck = assignment.main_deck
+    role_breakdown = assignment.role_breakdown
+    quota_status = assignment.quota_status
+    package_breakdown = packages_with_activation_status(
+        packages=deck.package_breakdown,
+        main_deck=main_deck,
+        primary_plan=coherence_report.primary_plan,
+        commander_supports_loose_value=_commander_supports_loose_value(
+            commander, coherence_report.primary_plan
+        ),
+        enforce_commander_relevance=True,
+    )
+
+    main_for_validation: list[tuple[CardData, int]] = []
+    for deck_card in main_deck:
+        card_data = all_cards_lookup.get(deck_card.oracle_id)
+        if card_data is not None:
+            main_for_validation.append((card_data, deck_card.quantity))
+    validation = LegalityValidator().validate_deck(commander, main_for_validation)
+
+    derived_warnings = [
+        warning
+        for warning in deck.warnings
+        if not _is_quota_warning(warning, quotas)
+        and not _is_coherence_warning(warning)
+    ]
+    fresh_warnings = [
+        *derived_warnings,
+        *[qs.warning for qs in quota_status if qs.warning is not None],
+        *[qs.credit_warning for qs in quota_status if qs.credit_warning is not None],
+        *coherence_report.warnings,
+    ]
+    warnings = _merge_warnings([], fresh_warnings)
+
+    owned_count = sum(c.quantity for c in main_deck if c.is_owned)
+    return deck.model_copy(
+        update={
+            "main_deck": main_deck,
+            "role_breakdown": dict(role_breakdown),
+            "quota_status": quota_status,
+            "package_breakdown": package_breakdown,
+            "warnings": warnings,
+            "owned_count": owned_count,
+            "owned_percentage": owned_count / 99 if 99 > 0 else 0.0,
+            "is_valid": validation.valid,
+            "validation_errors": [error.reason for error in validation.errors],
+            "strategic_coherence": coherence_report,
+        }
+    )
+
+
+def _is_quota_warning(warning: str, quotas: list) -> bool:
+    for quota in quotas:
+        role_value = quota.role.value
+        if warning.startswith(f"{role_value}: need ") or warning.startswith(
+            f"{role_value}: credit "
+        ):
+            return True
+    return False
+
+
+def _is_coherence_warning(warning: str) -> bool:
+    return (
+        warning.startswith("Strategic coherence")
+        or warning.startswith("Loose Treasure/Clue/Food/Map")
+        or warning.startswith("Commander support is fallback")
+    )
+
+
+COHERENCE_FAIL_CLOSED_CONFIDENCE_CAP: float = 0.35
+COHERENCE_VALIDATION_CONFIDENCE_CAP: float = 0.20
+
+
+def _finalize_quality_generation_status(deck: GeneratedDeck) -> GeneratedDeck:
+    """Mark legal-but-structurally-failed drafts distinctly from successes."""
+    if not deck.is_valid or deck.validation_errors:
+        return deck.model_copy(update={"generation_status": "failed_validation"})
+
+    # Pool-limited gaps already annotated; export remains enabled
+    if deck.generation_status == "generated_with_collection_gap":
+        return deck
+
+    failures = _quality_failure_reasons(deck)
+    if not failures:
+        return deck.model_copy(update={"generation_status": "success"})
+
+    warnings = _merge_warnings(
+        deck.warnings,
+        [f"Deck quality failure: {reason}" for reason in failures],
+    )
+    return deck.model_copy(
+        update={
+            "generation_status": "failed_quality",
+            "warnings": warnings,
+        }
+    )
+
+
+MAX_REPAIR_ITERATIONS: int = 10
+
+
+def _multi_pass_quality_repair(
+    deck: GeneratedDeck,
+    commander: CardData,
+    commander_tags: list[RoleTag],
+    all_cards_lookup: dict[str, CardData],
+    quotas: list,
+    enriched_candidate_pool: list[DeckCard],
+    packages: list[PackageCluster],
+) -> GeneratedDeck:
+    """Multi-pass quality repair loop (SC-DECK-030).
+
+    Replaces _quality_retry_once. Runs up to MAX_REPAIR_ITERATIONS passes,
+    each addressing the highest-priority unresolved failure.
+    """
+    repairs_done = 0
+    while repairs_done < MAX_REPAIR_ITERATIONS:
+        if not _quality_failure_reasons(deck):
+            break
+        improved = _attempt_one_repair(
+            deck=deck,
+            enriched_candidate_pool=enriched_candidate_pool,
+            all_cards_lookup=all_cards_lookup,
+            commander=commander,
+            commander_tags=commander_tags,
+            quotas=quotas,
+            packages=packages,
+        )
+        if improved is None:
+            break
+        coherence_report = StrategicCoherenceValidator().validate(
+            commander=commander,
+            commander_tags=commander_tags,
+            deck=improved,
+            all_cards_lookup=all_cards_lookup,
+            packages=packages,
+        )
+        improved = improved.model_copy(update={"strategic_coherence": coherence_report})
+        improved = _refresh_deck_derived_state(
+            deck=improved,
+            commander=commander,
+            all_cards_lookup=all_cards_lookup,
+            quotas=quotas,
+            coherence_report=coherence_report,
+        )
+        deck = _finalize_coherence_fail_closed(improved, packages)
+        repairs_done += 1
+
+    if repairs_done > 0:
+        deck = deck.model_copy(
+            update={
+                "warnings": _merge_warnings(
+                    deck.warnings,
+                    [f"quality repair: {repairs_done} iteration(s)"],
+                )
+            }
+        )
+
+    # Detect pool-limited gaps: remaining count failures where the pool has no more candidates
+    remaining_failures = _quality_failure_reasons(deck)
+    if remaining_failures:
+        selected_ids = {c.oracle_id for c in deck.main_deck}
+        pool_limited_roles = [
+            role for role in _underfilled_role_names(deck)
+            if _is_role_pool_limited(role, selected_ids, enriched_candidate_pool, all_cards_lookup)
+        ]
+        if pool_limited_roles and _only_pool_limited_count_failures(deck, pool_limited_roles):
+            gap_warnings = [
+                f"collection_gap: {role}: no more candidates available in collection"
+                for role in pool_limited_roles
+            ]
+            deck = deck.model_copy(
+                update={
+                    "warnings": _merge_warnings(deck.warnings, gap_warnings),
+                    "generation_status": "generated_with_collection_gap",
+                }
+            )
+
+    return deck
+
+
+def _attempt_one_repair(
+    deck: GeneratedDeck,
+    enriched_candidate_pool: list[DeckCard],
+    all_cards_lookup: dict[str, CardData],
+    commander: CardData,
+    commander_tags: list[RoleTag],
+    quotas: list,
+    packages: list[PackageCluster],
+) -> GeneratedDeck | None:
+    """Try each repair type in priority order. Return updated deck or None."""
+    selected_ids = {c.oracle_id for c in deck.main_deck}
+
+    # 1. WIN_CONDITION quota shortfall
+    if _win_condition_underfilled(deck):
+        result = _repair_by_role(deck, "WIN_CONDITION", selected_ids, enriched_candidate_pool, all_cards_lookup, quotas)
+        if result is not None:
+            return result
+
+    # 2. Most underfilled required roles (ramp, draw, removal, etc.)
+    for role in _underfilled_required_roles(deck):
+        result = _repair_by_role(deck, role, selected_ids, enriched_candidate_pool, all_cards_lookup, quotas)
+        if result is not None:
+            return result
+
+    # 3. Off-plan warning card
+    if deck.strategic_coherence and deck.strategic_coherence.warning_card_oracle_ids:
+        result = _repair_off_plan_one(deck, selected_ids, enriched_candidate_pool, all_cards_lookup, commander, packages, quotas)
+        if result is not None:
+            return result
+
+    # 4. Inactive package orphan
+    result = _repair_orphan_one(deck, selected_ids, enriched_candidate_pool, all_cards_lookup, packages, quotas)
+    if result is not None:
+        return result
+
+    # 5. Quality-weak card
+    result = _repair_quality_weak_one(deck, selected_ids, enriched_candidate_pool, all_cards_lookup, quotas)
+    if result is not None:
+        return result
+
+    # 6. Credit-quality upgrade: replace lowest-credit role-filler for the worst credit gap
+    return _repair_credit_quality_one(deck, selected_ids, enriched_candidate_pool, all_cards_lookup, quotas)
+
+
+def _win_condition_underfilled(deck: GeneratedDeck) -> bool:
+    return any(
+        quota.role == "WIN_CONDITION" and quota.actual_count < quota.target_min
+        for quota in deck.quota_status
+    )
+
+
+def _underfilled_required_roles(deck: GeneratedDeck) -> list[str]:
+    """Return hard-required roles below target_min, sorted by largest deficit first."""
+    from app.recommendation.strategic_coherence import REQUIRED_ROLE_FILLERS
+
+    deficits: list[tuple[int, str]] = []
+    for quota in deck.quota_status:
+        if quota.role in REQUIRED_ROLE_FILLERS and quota.actual_count < quota.target_min:
+            deficits.append((quota.target_min - quota.actual_count, quota.role))
+    deficits.sort(reverse=True)
+    return [role for _, role in deficits]
+
+
+def _underfilled_role_names(deck: GeneratedDeck) -> list[str]:
+    """Return all roles (not just required) with actual_count < target_min."""
+    return [
+        quota.role
+        for quota in deck.quota_status
+        if quota.actual_count < quota.target_min
+    ]
+
+
+def _is_role_pool_limited(
+    role: str,
+    selected_ids: set[str],
+    enriched_candidate_pool: list[DeckCard],
+    all_cards_lookup: dict[str, CardData],
+) -> bool:
+    """Return True when no unselected pool candidate has the given role."""
+    return not any(
+        c.oracle_id not in selected_ids
+        and role in c.roles
+        and "LAND" not in c.roles
+        and c.oracle_id in all_cards_lookup
+        for c in enriched_candidate_pool
+    )
+
+
+def _only_pool_limited_count_failures(
+    deck: GeneratedDeck,
+    pool_limited_roles: list[str],
+) -> bool:
+    """Return True when every count-based failure is covered by pool_limited_roles."""
+    pool_limited_set = set(pool_limited_roles)
+    for quota in deck.quota_status:
+        if quota.actual_count < quota.target_min and quota.role not in pool_limited_set:
+            return False
+    return True
+
+
+def _find_swap_target(deck: GeneratedDeck, incoming_role: str, quotas: list) -> int | None:
+    """Return index of the best card to swap out to make room for incoming_role."""
+    quota_min: dict[str, int] = {q.role.value: q.target_min for q in quotas}
+    quota_max: dict[str, int] = {q.role.value: q.target_max for q in quotas}
+    role_counts: dict[str, int] = defaultdict(int)
+
+    def _counted_roles(card: DeckCard) -> list[str]:
+        if card.assigned_role is not None:
+            return [card.assigned_role]
+        return list(card.roles)
+
+    for c in deck.main_deck:
+        for r in _counted_roles(c):
+            role_counts[r] += c.quantity
+
+    warning_ids = set(
+        deck.strategic_coherence.warning_card_oracle_ids
+        if deck.strategic_coherence is not None
+        else []
+    )
+
+    def _removable(card: DeckCard) -> bool:
+        counted_roles = _counted_roles(card)
+        return (
+            "LAND" not in card.roles
+            and incoming_role not in counted_roles
+            and all(role_counts.get(r, 0) - 1 >= quota_min.get(r, 0) for r in counted_roles)
+        )
+
+    def _overfill_amount(card: DeckCard) -> int:
+        best = 0
+        for role in _counted_roles(card):
+            cap = quota_max.get(role)
+            if cap is not None:
+                best = max(best, role_counts.get(role, 0) - cap)
+        return best
+
+    # Prefer warning cards first
+    for idx, card in enumerate(deck.main_deck):
+        if card.oracle_id in warning_ids and _removable(card):
+            return idx
+
+    overfilled_candidates = [
+        (idx, _overfill_amount(card))
+        for idx, card in enumerate(deck.main_deck)
+        if _removable(card) and _overfill_amount(card) > 0
+    ]
+    if overfilled_candidates:
+        overfilled_candidates.sort(key=lambda item: (-item[1], item[0]))
+        return overfilled_candidates[0][0]
+
+    # Then any suitable non-land card
+    for idx, card in enumerate(deck.main_deck):
+        if _removable(card):
+            return idx
+    # Last resort: non-land card regardless of incoming_role
+    for idx, card in enumerate(deck.main_deck):
+        counted_roles = _counted_roles(card)
+        if (
+            "LAND" not in card.roles
+            and incoming_role not in counted_roles
+            and all(role_counts.get(r, 0) - 1 >= quota_min.get(r, 0) for r in counted_roles)
+        ):
+            return idx
+    return None
+
+
+def _repair_by_role(
+    deck: GeneratedDeck,
+    role: str,
+    selected_ids: set[str],
+    enriched_candidate_pool: list[DeckCard],
+    all_cards_lookup: dict[str, CardData],
+    quotas: list,
+) -> GeneratedDeck | None:
+    """Add or swap in the best unselected candidate that fills the given role."""
+    candidates = [
+        c for c in enriched_candidate_pool
+        if c.oracle_id not in selected_ids
+        and role in c.roles
+        and "LAND" not in c.roles
+        and c.oracle_id in all_cards_lookup
+    ]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda c: (not c.is_owned, -c.synergy_score, c.oracle_id))
+    replacement = candidates[0].model_copy(
+        update={"quantity": 1, "selection_reason": f"quality repair: fills {role}"}
+    )
+    swap_idx = _find_swap_target(deck, role, quotas)
+    if swap_idx is None:
+        return None
+    main_deck = list(deck.main_deck)
+    main_deck[swap_idx] = replacement
+    return deck.model_copy(update={"main_deck": main_deck, "generation_status": "needs_repair"})
+
+
+def _repair_off_plan_one(
+    deck: GeneratedDeck,
+    selected_ids: set[str],
+    enriched_candidate_pool: list[DeckCard],
+    all_cards_lookup: dict[str, CardData],
+    commander: CardData,
+    packages: list[PackageCluster],
+    quotas: list,
+) -> GeneratedDeck | None:
+    """Replace one off-plan warning card with the best on-plan alternative."""
+    from app.recommendation.strategic_coherence import REQUIRED_ROLE_FILLERS
+
+    coherence_report = deck.strategic_coherence
+    if coherence_report is None:
+        return None
+
+    quota_min: dict[str, int] = {q.role.value: q.target_min for q in quotas}
+    role_counts: dict[str, int] = defaultdict(int)
+    for c in deck.main_deck:
+        for r in c.roles:
+            role_counts[r] += c.quantity
+
+    on_plan_pool = [
+        c for c in enriched_candidate_pool
+        if c.oracle_id not in selected_ids
+        and "LAND" not in c.roles
+        and c.name not in _BASIC_LAND_NAMES
+        and _is_on_plan_candidate(c, all_cards_lookup, coherence_report, commander, packages)
+    ]
+    on_plan_pool.sort(key=lambda c: (not c.is_owned, -c.synergy_score, c.oracle_id))
+
+    for warning_oid in coherence_report.warning_card_oracle_ids:
+        card_idx = next(
+            (i for i, c in enumerate(deck.main_deck) if c.oracle_id == warning_oid), None
+        )
+        if card_idx is None:
+            continue
+        warning_card = deck.main_deck[card_idx]
+        if REQUIRED_ROLE_FILLERS.intersection(warning_card.roles):
+            if not all(
+                role_counts.get(r, 0) - 1 >= quota_min.get(r, 0) for r in warning_card.roles
+            ):
+                continue
+        replacement = next((c for c in on_plan_pool if c.oracle_id not in selected_ids), None)
+        if replacement is None:
+            return None
+        main_deck = list(deck.main_deck)
+        main_deck[card_idx] = replacement.model_copy(
+            update={
+                "quantity": 1,
+                "selection_reason": f"quality repair: replaced off-plan {warning_card.name}",
+            }
+        )
+        return deck.model_copy(update={"main_deck": main_deck, "generation_status": "needs_repair"})
+    return None
+
+
+def _repair_orphan_one(
+    deck: GeneratedDeck,
+    selected_ids: set[str],
+    enriched_candidate_pool: list[DeckCard],
+    all_cards_lookup: dict[str, CardData],
+    packages: list[PackageCluster],
+    quotas: list,
+) -> GeneratedDeck | None:
+    """Replace one inactive-package orphan with a package-active or on-plan alternative."""
+    if not packages:
+        return None
+
+    active_ids = active_package_ids_for_deck(deck.main_deck, packages)
+    underfilled_ids = frozenset(
+        p.package_id for p in packages if p.package_id not in active_ids
+    )
+    if not underfilled_ids:
+        return None
+
+    card_to_pkgs: dict[str, list[str]] = {}
+    for pkg in packages:
+        for oid in pkg.card_oracle_ids:
+            card_to_pkgs.setdefault(oid, []).append(pkg.package_id)
+
+    quota_min: dict[str, int] = {q.role.value: q.target_min for q in quotas}
+    role_counts: dict[str, int] = defaultdict(int)
+    for c in deck.main_deck:
+        for r in c.roles:
+            role_counts[r] += c.quantity
+
+    for idx, card in enumerate(deck.main_deck):
+        if "LAND" in card.roles:
+            continue
+        pkg_ids = card_to_pkgs.get(card.oracle_id, [])
+        if not pkg_ids:
+            continue
+        card_with_pkgs = card.model_copy(update={"package_ids": pkg_ids})
+        if not is_orphan(card_with_pkgs, underfilled_ids):
+            continue
+        if not all(role_counts.get(r, 0) - 1 >= quota_min.get(r, 0) for r in card.roles):
+            continue
+
+        candidates = [
+            c for c in enriched_candidate_pool
+            if c.oracle_id not in selected_ids
+            and "LAND" not in c.roles
+            and c.oracle_id in all_cards_lookup
+        ]
+        candidates.sort(
+            key=lambda c: (
+                not any(pid in active_ids for pid in c.package_ids),
+                not c.is_owned,
+                -c.synergy_score,
+                c.oracle_id,
+            )
+        )
+        if not candidates:
+            return None
+        replacement = candidates[0].model_copy(
+            update={"quantity": 1, "selection_reason": f"quality repair: replaced orphan {card.name}"}
+        )
+        main_deck = list(deck.main_deck)
+        main_deck[idx] = replacement
+        return deck.model_copy(update={"main_deck": main_deck, "generation_status": "needs_repair"})
+    return None
+
+
+def _repair_quality_weak_one(
+    deck: GeneratedDeck,
+    selected_ids: set[str],
+    enriched_candidate_pool: list[DeckCard],
+    all_cards_lookup: dict[str, CardData],
+    quotas: list,
+) -> GeneratedDeck | None:
+    """Replace one quality-weak non-land card with a higher-synergy role-equivalent."""
+    quota_min: dict[str, int] = {q.role.value: q.target_min for q in quotas}
+    role_counts: dict[str, int] = defaultdict(int)
+    for c in deck.main_deck:
+        for r in c.roles:
+            role_counts[r] += c.quantity
+
+    weak_cards = [
+        (idx, card)
+        for idx, card in enumerate(deck.main_deck)
+        if "LAND" not in card.roles
+        and "WIN_CONDITION" not in card.roles
+        and all(role_counts.get(r, 0) - 1 >= quota_min.get(r, 0) for r in card.roles)
+    ]
+    if not weak_cards:
+        return None
+    weak_cards.sort(key=lambda t: (t[1].is_owned, t[1].synergy_score, t[1].oracle_id))
+    swap_idx, swap_card = weak_cards[0]
+
+    candidates = [
+        c for c in enriched_candidate_pool
+        if c.oracle_id not in selected_ids
+        and "LAND" not in c.roles
+        and c.oracle_id in all_cards_lookup
+        and c.synergy_score > swap_card.synergy_score
+        and any(r in c.roles for r in swap_card.roles)
+    ]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda c: (not c.is_owned, -c.synergy_score, c.oracle_id))
+    replacement = candidates[0].model_copy(
+        update={
+            "quantity": 1,
+            "selection_reason": f"quality repair: replaced quality-weak {swap_card.name}",
+        }
+    )
+    main_deck = list(deck.main_deck)
+    main_deck[swap_idx] = replacement
+    return deck.model_copy(update={"main_deck": main_deck, "generation_status": "needs_repair"})
+
+
+def _repair_credit_quality_one(
+    deck: GeneratedDeck,
+    selected_ids: set[str],
+    enriched_candidate_pool: list[DeckCard],
+    all_cards_lookup: dict[str, CardData],
+    quotas: list,
+) -> GeneratedDeck | None:
+    """Replace the lowest-credit role-filler for the quota with the largest credit gap.
+
+    Only fires when is_satisfied=True but credit_satisfied=False (count-met, credit-not-met).
+    """
+    from app.recommendation.role_credit import role_quality_credit
+
+    credit_gaps = [
+        (q.target_min - q.credit_sum, q)
+        for q in deck.quota_status
+        if q.is_satisfied and not q.credit_satisfied
+    ]
+    if not credit_gaps:
+        return None
+    credit_gaps.sort(key=lambda item: item[0], reverse=True)
+    _, worst_quota = credit_gaps[0]
+    target_role = worst_quota.role
+
+    quota_min: dict[str, int] = {q.role.value: q.target_min for q in quotas}
+    role_counts: dict[str, int] = defaultdict(int)
+    for c in deck.main_deck:
+        for r in c.roles:
+            role_counts[r] += c.quantity
+
+    role_cards = [
+        (idx, card)
+        for idx, card in enumerate(deck.main_deck)
+        if target_role in card.roles
+        and "LAND" not in card.roles
+        # target_role count stays the same (replacement also has it); only check other roles
+        and all(
+            role_counts.get(r, 0) - 1 >= quota_min.get(r, 0)
+            for r in card.roles
+            if r != target_role
+        )
+    ]
+    if not role_cards:
+        return None
+
+    role_cards.sort(
+        key=lambda t: (
+            role_quality_credit(all_cards_lookup[t[1].oracle_id], target_role)
+            if t[1].oracle_id in all_cards_lookup else 0.0,
+            t[1].oracle_id,
+        )
+    )
+    swap_idx, swap_card = role_cards[0]
+    swap_credit = (
+        role_quality_credit(all_cards_lookup[swap_card.oracle_id], target_role)
+        if swap_card.oracle_id in all_cards_lookup else 0.0
+    )
+
+    candidates = [
+        c for c in enriched_candidate_pool
+        if c.oracle_id not in selected_ids
+        and target_role in c.roles
+        and "LAND" not in c.roles
+        and c.oracle_id in all_cards_lookup
+        and role_quality_credit(all_cards_lookup[c.oracle_id], target_role) > swap_credit
+    ]
+    if not candidates:
+        return None
+    candidates.sort(
+        key=lambda c: (
+            -role_quality_credit(all_cards_lookup[c.oracle_id], target_role),
+            not c.is_owned,
+            -c.synergy_score,
+            c.oracle_id,
+        )
+    )
+    replacement = candidates[0].model_copy(
+        update={
+            "quantity": 1,
+            "selection_reason": f"quality repair: improved {target_role} credit",
+        }
+    )
+    main_deck = list(deck.main_deck)
+    main_deck[swap_idx] = replacement
+    return deck.model_copy(update={"main_deck": main_deck, "generation_status": "needs_repair"})
+
+
+def _quality_failure_reasons(deck: GeneratedDeck) -> list[str]:
+    reasons: list[str] = []
+    for quota in deck.quota_status:
+        if not quota.is_satisfied and quota.warning:
+            reasons.append(quota.warning)
+        if not quota.credit_satisfied and quota.credit_warning:
+            reasons.append(quota.credit_warning)
+        if quota.role == "WIN_CONDITION" and quota.actual_count < quota.target_min:
+            reasons.append(
+                f"WIN_CONDITION: need {quota.target_min}–{quota.target_max}, got {quota.actual_count}"
+            )
+
+    report = deck.strategic_coherence
+    if report is not None:
+        structural_caps = [
+            reason
+            for reason in report.confidence_cap_reasons
+            if reason != "validation_error"
+        ]
+        if structural_caps:
+            reasons.append(
+                "coherence confidence capped by unresolved structural issue(s): "
+                + ", ".join(structural_caps)
+            )
+        if report.off_plan_count > MAX_OFF_PLAN_CARDS:
+            reasons.append(
+                f"off-plan nonland cards exceed limit: {report.off_plan_count}/{MAX_OFF_PLAN_CARDS}"
+            )
+
+    return _merge_warnings([], reasons)
+
+
+def _finalize_coherence_fail_closed(
+    deck: GeneratedDeck,
+    packages: list[PackageCluster],
+) -> GeneratedDeck:
+    """Cap strategic coherence metrics when unresolved deck failures remain."""
+    report = deck.strategic_coherence
+    if report is None:
+        return deck
+
+    cap_reasons = _coherence_cap_reasons(deck, report, packages)
+    if not cap_reasons:
+        return deck.model_copy(
+            update={
+                "strategic_coherence": report.model_copy(
+                    update={"confidence_cap_reasons": []}
+                )
+            }
+        )
+
+    cap = (
+        COHERENCE_VALIDATION_CONFIDENCE_CAP
+        if "validation_error" in cap_reasons
+        else COHERENCE_FAIL_CLOSED_CONFIDENCE_CAP
+    )
+    warnings = _merge_warnings(
+        report.warnings,
+        ["Strategic coherence confidence capped: unresolved deck-quality failures remain."],
+    )
+    finalized_report = report.model_copy(
+        update={
+            "confidence": min(report.confidence, cap),
+            "off_plan_count": max(report.off_plan_count, 1),
+            "confidence_cap_reasons": cap_reasons,
+            "warnings": warnings,
+        }
+    )
+
+    return deck.model_copy(
+        update={
+            "strategic_coherence": finalized_report,
+            "warnings": _merge_warnings(deck.warnings, finalized_report.warnings),
+            "generation_status": (
+                "failed_validation"
+                if (not deck.is_valid or deck.validation_errors)
+                else deck.generation_status
+            ),
+        }
+    )
+
+
+def _coherence_cap_reasons(
+    deck: GeneratedDeck,
+    report: StrategicCoherenceReport,
+    packages: list[PackageCluster],
+) -> list[str]:
+    reasons: list[str] = []
+    if not deck.is_valid or deck.validation_errors:
+        reasons.append("validation_error")
+    if any(not quota.is_satisfied for quota in deck.quota_status):
+        reasons.append("hard_quota_failure")
+    if any(not quota.credit_satisfied for quota in deck.quota_status):
+        reasons.append("quota_credit_failure")
+    if any(_is_loose_package_warning(w) for w in [*deck.warnings, *report.warnings]):
+        reasons.append("loose_package")
+    if report.warning_card_oracle_ids:
+        reasons.append("unresolved_warning_cards")
+    if _has_commander_irrelevant_active_package(report, packages):
+        reasons.append("commander_irrelevant_active_package")
+    return reasons
+
+
+def _is_loose_package_warning(warning: str) -> bool:
+    return "Loose Treasure/Clue/Food/Map" in warning
+
+
+def _has_commander_irrelevant_active_package(
+    report: StrategicCoherenceReport,
+    packages: list[PackageCluster],
+) -> bool:
+    if not report.active_package_ids:
+        return False
+    if report.primary_plan is None:
+        return False  # Unknown plan — cannot determine relevance
+
+    package_by_id = {package.package_id: package for package in packages}
+    for package_id in report.active_package_ids:
+        package = package_by_id.get(package_id)
+        if package is None:
+            continue
+        if not _package_matches_primary_plan(package, report.primary_plan):
+            return True
+    return False
+
+
+def _package_matches_primary_plan(package: PackageCluster, primary_plan: str) -> bool:
+    normalized_plan = primary_plan.replace("-", " ").lower()
+    package_text = " ".join([package.label, *package.top_roles]).replace("_", " ").lower()
+    if normalized_plan in package_text:
+        return True
+
+    plan_roles = PLAN_ROLE_HINTS.get(primary_plan, frozenset())
+    return any(role.replace("_", " ").lower() in package_text for role in plan_roles)
+
+
+def _is_on_plan_candidate(
+    card: DeckCard,
+    all_cards_lookup: dict[str, CardData],
+    coherence_report: StrategicCoherenceReport,
+    commander: CardData,
+    packages: list[PackageCluster],
+) -> bool:
+    """Return True when a candidate card is justified for the commander's plan."""
+    from app.recommendation.strategic_coherence import is_card_justified
+
+    card_data = all_cards_lookup.get(card.oracle_id)
+    if card_data is None:
+        return False
+    active_pkg_ids = set(coherence_report.active_package_ids)
+    return is_card_justified(
+        card=card,
+        card_data=card_data,
+        primary_plan=coherence_report.primary_plan,
+        active_package_ids=active_pkg_ids,
+        commander_oracle_id=commander.oracle_id,
+    )
+
+
 def _build_deck_score_logs(session_id: str, deck: GeneratedDeck) -> list[ScoreLog]:
     logs: list[ScoreLog] = []
+    if deck.strategic_coherence is not None:
+        report = deck.strategic_coherence
+        report_warnings = _merge_warnings(report.warnings, deck.warnings)
+        logs.append(
+            ScoreLog(
+                session_id=session_id,
+                scope="deck_analysis",
+                data_version=DATA_VERSION,
+                subject_id=deck.deck_id,
+                score_components={
+                    "strategic_confidence": round(report.confidence, 6),
+                    "on_plan_count": float(report.on_plan_count),
+                    "off_plan_count": float(report.off_plan_count),
+                    "warning_candidate_count": float(len(report.warning_card_oracle_ids)),
+                },
+                selected_reasons=[
+                    f"primary_plan:{report.primary_plan or 'unknown'}",
+                    f"commander_profile_source:{get_commander_profile_source(deck.commander.oracle_id, deck.commander.name)}",
+                    *[f"active_package:{pid}" for pid in report.active_package_ids],
+                    *[
+                        f"coherence_cap:{reason}"
+                        for reason in report.confidence_cap_reasons
+                    ],
+                ],
+                warnings=[
+                    *report_warnings,
+                    *[f"warning_card:{oid}" for oid in report.warning_card_oracle_ids],
+                ],
+            )
+        )
+    elif deck.warnings:
+        logs.append(
+            ScoreLog(
+                session_id=session_id,
+                scope="deck_analysis",
+                data_version=DATA_VERSION,
+                subject_id=deck.deck_id,
+                score_components={
+                    "warning_count": float(len(deck.warnings)),
+                },
+                selected_reasons=[],
+                warnings=list(deck.warnings),
+            )
+        )
+
     for card in [deck.commander] + sorted(deck.main_deck, key=lambda c: c.oracle_id):
         logs.append(
             ScoreLog(
@@ -223,3 +1251,11 @@ def _build_deck_score_logs(session_id: str, deck: GeneratedDeck) -> list[ScoreLo
             )
         )
     return logs
+
+
+def _merge_warnings(existing: list[str], new: list[str]) -> list[str]:
+    merged: list[str] = []
+    for warning in [*existing, *new]:
+        if warning not in merged:
+            merged.append(warning)
+    return merged

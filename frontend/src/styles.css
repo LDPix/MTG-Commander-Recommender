@@ -521,6 +521,17 @@ button, input, textarea {
   color: var(--error);
 }
 
+.invalid-deck-alert {
+  margin: 18px 0;
+}
+
+.validation-error-list {
+  margin: -6px 0 18px;
+  padding-left: 22px;
+  color: var(--error);
+  font-size: 0.9rem;
+}
+
 .commander-cta {
   padding-top: 14px;
   border-top: 1px solid var(--border);
@@ -702,6 +713,29 @@ button, input, textarea {
   color: #9B6415;
   font-weight: 600;
   margin: 4px 0;
+}
+
+.coherence-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.coherence-metrics span {
+  border: 1px solid var(--border);
+  border-radius: var(--r-chip);
+  background: var(--gold-tint);
+  color: var(--text-secondary);
+  padding: 0.25rem 0.55rem;
+  font-size: 0.8125rem;
+}
+
+.coherence-warning-list {
+  border-left: 4px solid #9B6415;
+  background: #FFF8E7;
+  margin-top: 12px;
+  padding: 10px 12px;
 }
 
 .package-row {

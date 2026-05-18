@@ -24,7 +24,6 @@ class CardRole(str, Enum):
     RECURSION = "RECURSION"
     SACRIFICE_OUTLET = "SACRIFICE_OUTLET"
     TOKEN_MAKER = "TOKEN_MAKER"
-    PAYOFF = "PAYOFF"
     COMBO_PIECE = "COMBO_PIECE"
     TRIBAL_SUPPORT = "TRIBAL_SUPPORT"
     BLINK_SYNERGY = "BLINK_SYNERGY"
@@ -93,11 +92,6 @@ ROLE_DEFINITIONS: dict[CardRole, str] = {
     CardRole.TOKEN_MAKER: (
         "Creates one or more creature or artifact tokens. Fuels aristocrats, "
         "go-wide, and tribal strategies."
-    ),
-    CardRole.PAYOFF: (
-        "A card that rewards executing the deck's strategy. Typically scores "
-        "points, drains life, creates card advantage, or wins the game when "
-        "the engine is running."
     ),
     CardRole.COMBO_PIECE: (
         "A card that is part of a two- or three-card combo that can win or "
@@ -247,13 +241,6 @@ ROLE_EXAMPLES: dict[CardRole, list[str]] = {
         "Young Pyromancer",
         "Mycoloth",
     ],
-    CardRole.PAYOFF: [
-        "Blood Artist",
-        "Zulaport Cutthroat",
-        "Dictate of Erebos",
-        "Parallel Lives",
-        "Purphoros, God of the Forge",
-    ],
     CardRole.COMBO_PIECE: [
         "Dramatic Reversal",
         "Isochron Scepter",
@@ -283,8 +270,10 @@ ROLE_EXAMPLES: dict[CardRole, list[str]] = {
     CardRole.ARISTOCRATS_SYNERGY: [
         "Blood Artist",
         "Zulaport Cutthroat",
+        "Dictate of Erebos",
         "Yawgmoth, Thran Physician",
         "Bastion of Remembrance",
+        "Purphoros, God of the Forge",
     ],
     CardRole.SPELLSLINGER_SYNERGY: [
         "Young Pyromancer",

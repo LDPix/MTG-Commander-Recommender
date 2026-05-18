@@ -1,0 +1,87 @@
+{
+  "fixture_id": "greta_incoherent_generic_pile",
+  "description": "Golgari Greta, Sweettooth Scourge deck with off-plan generic creatures, treasure producers, and non-sacrifice cards. Coherence gate should flag off-plan cards for Food/sacrifice plan.",
+  "expected_outcome": "warning_or_repair",
+  "commander": {
+    "id": "greta-sweettooth-001",
+    "oracle_id": "greta-sweettooth-001",
+    "name": "Greta, Sweettooth Scourge",
+    "color_identity": ["B", "G"],
+    "legalities": {"commander": "legal"},
+    "type_line": "Legendary Creature - Goblin Warlock",
+    "oracle_text": "Whenever you sacrifice a Food, you gain 1 life and draw a card.",
+    "mana_cost": "{2}{B}{G}",
+    "cmc": 4.0,
+    "keywords": [],
+    "rarity": "uncommon",
+    "edhrec_rank": 8000
+  },
+  "cards": [
+    {
+      "oracle_id": "greta-off-plan-001",
+      "name": "Generic Combat Beater",
+      "roles": ["WIN_CONDITION"],
+      "type_line": "Creature - Beast",
+      "oracle_text": "Trample. When this enters the battlefield, put a +1/+1 counter on it.",
+      "cmc": 5.0
+    },
+    {
+      "oracle_id": "greta-off-plan-002",
+      "name": "Treasure Hoarder",
+      "roles": ["ENABLER"],
+      "type_line": "Artifact Creature - Goblin",
+      "oracle_text": "When this enters the battlefield, create a Treasure token.",
+      "cmc": 3.0
+    },
+    {
+      "oracle_id": "greta-off-plan-003",
+      "name": "Clue Investigator",
+      "roles": ["CARD_DRAW"],
+      "type_line": "Creature - Human Detective",
+      "oracle_text": "Whenever you sacrifice a Clue, draw a card.",
+      "cmc": 2.0
+    },
+    {
+      "oracle_id": "greta-off-plan-004",
+      "name": "Generic Flier",
+      "roles": ["WIN_CONDITION"],
+      "type_line": "Creature - Bird",
+      "oracle_text": "Flying.",
+      "cmc": 4.0
+    },
+    {
+      "oracle_id": "greta-off-plan-005",
+      "name": "Vanilla Stomper",
+      "roles": ["WIN_CONDITION"],
+      "type_line": "Creature - Rhino",
+      "oracle_text": "Trample.",
+      "cmc": 6.0
+    },
+    {
+      "oracle_id": "greta-on-plan-001",
+      "name": "Sacrifice Outlet",
+      "roles": ["SACRIFICE_OUTLET"],
+      "type_line": "Creature - Goblin",
+      "oracle_text": "Sacrifice a creature: you gain 2 life.",
+      "cmc": 2.0
+    },
+    {
+      "oracle_id": "greta-ramp-001",
+      "name": "Black Ramp",
+      "roles": ["RAMP"],
+      "type_line": "Sorcery",
+      "oracle_text": "Search your library for a Swamp card, put it onto the battlefield, then shuffle.",
+      "cmc": 3.0
+    }
+  ],
+  "unsupported_package": {
+    "package_id": "treasure-clue-value",
+    "label": "Treasure Clue artifact value",
+    "confidence": 0.65,
+    "card_oracle_ids": [
+      "greta-off-plan-002",
+      "greta-off-plan-003"
+    ],
+    "top_roles": ["ENABLER", "WIN_CONDITION"]
+  }
+}

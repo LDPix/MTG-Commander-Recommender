@@ -117,8 +117,8 @@ def test_cards_sharing_specific_roles_have_higher_scores(
     # Blood Artist and Viscera Seer both have SACRIFICE_OUTLET or ARISTOCRATS-like roles
     # They should have non-zero scores if they're in the pool
     pool_ids = {c.oracle_id for c in candidate_pool}
-    blood_artist_id = "aa000056-0000-4000-0000-000000000056"
-    viscera_seer_id = "aa000051-0000-4000-0000-000000000051"
+    blood_artist_id = "310f141c-7f37-4729-aed6-dd9c09db448d"
+    viscera_seer_id = "f82a4e85-526d-4456-b700-7760043a31be"
 
     if blood_artist_id in pool_ids and viscera_seer_id in pool_ids:
         # At least one should have a non-zero score (they share TOKEN_MAKER or SACRIFICE roles)

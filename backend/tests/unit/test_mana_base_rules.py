@@ -6,11 +6,14 @@ import pytest
 from app.recommendation.mana_base_rules import (
     C_ONLY_LAND_NAMES,
     KNOWN_FIXING_LAND_NAMES,
+    UTILITY_LAND_MIN_SYNERGY_SCORE,
     commander_is_colorless,
     is_c_only_land,
     is_fixing_land,
     is_mono_color,
+    is_utility_land,
     land_produces_off_color_mana,
+    utility_land_has_relevance,
 )
 from app.recommendation.deck_candidate_pool import DeckCandidatePool, _land_is_eligible
 from app.models.card import CardData
@@ -205,3 +208,98 @@ def test_c_only_filter_at_pool_stage(sample_cards, cards_by_name) -> None:
     )
     pool_ids = {c.oracle_id for c in pool}
     assert wastes.oracle_id not in pool_ids, "Wastes must not appear in a colored commander's pool"
+
+
+# ---------------------------------------------------------------------------
+# SC-MANA-003: Utility land synergy gate helpers
+# ---------------------------------------------------------------------------
+
+def test_utility_land_excluded_when_no_synergy() -> None:
+    assert utility_land_has_relevance(
+        "Mystifying Maze",
+        "{T}: Add {C}.\n{4}, {T}: Exile target attacking creature.",
+        "Land",
+        synergy_score=0.0,
+        package_ids=[],
+        active_package_ids=set(),
+    ) is False
+
+
+def test_utility_land_included_when_synergy_active() -> None:
+    assert utility_land_has_relevance(
+        "Mystifying Maze",
+        "{T}: Add {C}.\n{4}, {T}: Exile target attacking creature.",
+        "Land",
+        synergy_score=UTILITY_LAND_MIN_SYNERGY_SCORE,
+        package_ids=[],
+        active_package_ids=set(),
+    ) is True
+
+
+def test_utility_land_included_when_active_package_matches() -> None:
+    assert utility_land_has_relevance(
+        "The Seedcore",
+        "{T}: Add one mana of any color. Spend this mana only to cast Phyrexian creature spells.",
+        "Land — Sphere",
+        synergy_score=0.0,
+        package_ids=["phyrexian-package"],
+        active_package_ids={"phyrexian-package"},
+    ) is True
+
+
+def test_mana_producing_land_not_gated_by_synergy_rule() -> None:
+    assert is_utility_land("Forest Cave", "{T}: Add {G}.", "Land") is False
+    assert utility_land_has_relevance(
+        "Forest Cave",
+        "{T}: Add {G}.",
+        "Land",
+        synergy_score=0.0,
+        package_ids=[],
+        active_package_ids=set(),
+    ) is True
+
+
+def test_snow_basic_land_not_gated_by_synergy_rule() -> None:
+    assert is_utility_land(
+        "Snow-Covered Forest",
+        "({T}: Add {G}.)",
+        "Basic Snow Land — Forest",
+    ) is False
+
+
+def test_synergy_gate_threshold_is_configurable() -> None:
+    assert isinstance(UTILITY_LAND_MIN_SYNERGY_SCORE, float)
+    assert 0.0 < UTILITY_LAND_MIN_SYNERGY_SCORE < 1.0
+
+
+def test_seedcore_excluded_without_phyrexian_or_compleated_package() -> None:
+    assert utility_land_has_relevance(
+        "The Seedcore",
+        "{T}: Add one mana of any color. Spend this mana only to cast Phyrexian creature spells.",
+        "Land — Sphere",
+        synergy_score=0.0,
+        package_ids=[],
+        active_package_ids=set(),
+    ) is False
+
+
+def test_white_lotus_hideout_excluded_without_lifegain_or_white_relevance() -> None:
+    assert utility_land_has_relevance(
+        "White Lotus Hideout",
+        "{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a Lesson or Shrine spell.",
+        "Land",
+        synergy_score=0.0,
+        package_ids=[],
+        active_package_ids=set(),
+    ) is False
+
+
+def test_eclipsed_realms_excluded_without_enchantment_or_day_night_package() -> None:
+    assert utility_land_has_relevance(
+        "Eclipsed Realms",
+        "As this land enters, choose Elemental, Elf, Faerie, Giant, Goblin, Kithkin, Merfolk, or Treefolk.\n{T}: Add {C}.",
+        "Land",
+        synergy_score=0.0,
+        package_ids=[],
+        active_package_ids=set(),
+    ) is False

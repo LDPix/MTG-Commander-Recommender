@@ -13,6 +13,7 @@ import type {
   CommanderRecommendation,
   DeckCard,
   GeneratedDeckResponse,
+  QuotaStatus,
   RecommendationResponse,
   SavedDeckSummary,
   SupportConfidence,
@@ -21,6 +22,18 @@ import type {
 } from "./types/api";
 
 const upgradePriorities: UpgradePriority[] = ["core", "recommended", "optional"];
+
+function shouldShowCreditStatus(quota: QuotaStatus): boolean {
+  return quota.credit_satisfied !== quota.is_satisfied || Boolean(quota.credit_warning);
+}
+
+function isDeckExportable(deck: GeneratedDeckResponse): boolean {
+  return (
+    deck.generation_status === "success" &&
+    deck.is_valid &&
+    deck.validation_errors.length === 0
+  );
+}
 
 function makeSessionId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -94,7 +107,11 @@ export default function App() {
       setDeckSource("new");
       setSelectedCard(generatedDeck.commander);
       setExportText("");
-      setStatus(`Generated ${recommendation.name}.`);
+      setStatus(
+        isDeckExportable(generatedDeck)
+          ? `Generated ${recommendation.name}.`
+          : `Generation failed validation for ${recommendation.name}.`
+      );
       try {
         const saved = await fetchSavedDecks(sessionId);
         setSavedDecks(saved.decks);
@@ -109,7 +126,8 @@ export default function App() {
   }
 
   async function handleExportDeck() {
-    if (!deck) {
+    if (!deck || !isDeckExportable(deck)) {
+      setError("Invalid generated decks cannot be exported.");
       return;
     }
 
@@ -483,6 +501,7 @@ function DeckViewer({
     () => groupUpgrades(deck.upgrade_suggestions),
     [deck.upgrade_suggestions]
   );
+  const exportable = isDeckExportable(deck);
 
   return (
     <div className="deck-section">
@@ -499,10 +518,25 @@ function DeckViewer({
             <button
               className="btn-secondary btn-sm"
               onClick={onExportDeck}
+              disabled={!exportable}
             >
               Export plaintext
             </button>
           </div>
+
+          {!exportable && (
+            <div className="alert alert--error invalid-deck-alert">
+              <p>{generationFailureCopy(deck)}</p>
+            </div>
+          )}
+
+          {deck.validation_errors.length > 0 && (
+            <ul className="validation-error-list">
+              {deck.validation_errors.map((validationError) => (
+                <li key={validationError}>{validationError}</li>
+              ))}
+            </ul>
+          )}
 
           {exportText && (
             <textarea
@@ -541,16 +575,26 @@ function DeckViewer({
                 {deck.quota_status.map((quota) => (
                   <p
                     key={quota.role}
-                    className={quota.is_satisfied ? "quota-ok" : "quota-warning"}
+                    className={
+                      quota.is_satisfied && quota.credit_satisfied
+                        ? "quota-ok"
+                        : "quota-warning"
+                    }
                   >
                     {quota.role}: {quota.actual_count}/{quota.target_min}-
                     {quota.target_max}
+                    {shouldShowCreditStatus(quota)
+                      ? `, credit ${quota.credit_sum}/${quota.target_min}`
+                      : ""}
                     {quota.warning ? ` - ${quota.warning}` : ""}
+                    {quota.credit_warning ? ` - ${quota.credit_warning}` : ""}
                   </p>
                 ))}
               </div>
             )}
           </section>
+
+          <StrategicCoherencePanel deck={deck} />
 
           <section className="surface-card">
             <h2 className="section-title">Package breakdown</h2>
@@ -563,6 +607,12 @@ function DeckViewer({
                     <strong>{pkg.label}</strong>
                     <span>{(pkg.confidence * 100).toFixed(0)}%</span>
                   </div>
+                  <p>
+                    {formatPackageStatus(pkg.activation_status)} - {pkg.selected_count} core selected
+                    {pkg.raw_selected_count !== pkg.selected_count
+                      ? ` (${pkg.raw_selected_count} raw)`
+                      : ""}
+                  </p>
                   <p>{pkg.top_roles.join(", ") || "No dominant role"}</p>
                 </div>
               ))
@@ -593,6 +643,73 @@ function DeckViewer({
       </div>
     </div>
   );
+}
+
+function StrategicCoherencePanel({ deck }: { deck: GeneratedDeckResponse }) {
+  const report = deck.strategic_coherence;
+  const warnings = report?.warnings.length ? report.warnings : deck.warnings;
+
+  if (!report && warnings.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="surface-card">
+      <h2 className="section-title">Strategic coherence</h2>
+      {report?.primary_plan && (
+        <p>
+          Primary plan: <strong>{formatPlan(report.primary_plan)}</strong>
+        </p>
+      )}
+      {report && (
+        <div className="coherence-metrics">
+          <span>Confidence {(report.confidence * 100).toFixed(0)}%</span>
+          <span>On plan {report.on_plan_count}</span>
+          <span>Off plan {report.off_plan_count}</span>
+          <span>Warning candidates {report.warning_card_oracle_ids.length}</span>
+        </div>
+      )}
+      {report && report.active_package_ids.length > 0 && (
+        <p className="detail-text">
+          Active packages: {report.active_package_ids.join(", ")}
+        </p>
+      )}
+      {warnings.length > 0 && (
+        <div className="coherence-warning-list">
+          <h3>Deck warnings</h3>
+          <ul>
+            {warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function formatPlan(plan: string) {
+  return plan
+    .split(/[_-]/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatPackageStatus(status: string) {
+  return status
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function generationFailureCopy(deck: GeneratedDeckResponse) {
+  if (deck.generation_status === "failed_quality") {
+    return "Deck generation failed quality checks. Export is disabled until quota, coherence, and win-condition gaps are repaired.";
+  }
+  if (deck.generation_status === "needs_repair") {
+    return "Deck generation needs repair before export.";
+  }
+  return "Generation failed validation. Export is disabled until the deck passes Commander legality checks.";
 }
 
 function CardRow({

@@ -1,0 +1,97 @@
+{
+  "fixture_id": "nissa_incoherent_value_pile",
+  "description": "Mono-green Nissa, Worldsoul Speaker deck shape with loose Treasure, Clue, Food, artifact-value, utility-land, and random creature cards. The exact decklist is not locked; the coherence gate should repair, reject, or warning-flag this pattern.",
+  "expected_outcome": "warning_or_repair",
+  "commander": {
+    "id": "00037840-6089-42ec-8c5c-281f9f474504",
+    "oracle_id": "00037840-6089-42ec-8c5c-281f9f474504",
+    "name": "Nissa, Worldsoul Speaker",
+    "color_identity": ["G"],
+    "legalities": {"commander": "legal"},
+    "type_line": "Legendary Creature - Elf Druid",
+    "oracle_text": "Landfall - Whenever a land you control enters, you get {E}{E}. You may pay eight {E} rather than pay the mana cost for permanent spells you cast.",
+    "mana_cost": "{3}{G}",
+    "cmc": 4.0,
+    "keywords": ["Landfall"],
+    "rarity": "rare",
+    "edhrec_rank": 7818
+  },
+  "cards": [
+    {
+      "oracle_id": "loose-treasure-001",
+      "name": "Loose Treasure Maker",
+      "roles": ["ENABLER"],
+      "type_line": "Artifact",
+      "oracle_text": "Whenever a creature attacks, create a Treasure token.",
+      "cmc": 3.0
+    },
+    {
+      "oracle_id": "loose-clue-001",
+      "name": "Loose Clue Engine",
+      "roles": ["WIN_CONDITION"],
+      "type_line": "Artifact",
+      "oracle_text": "Whenever you draw your second card each turn, investigate.",
+      "cmc": 4.0
+    },
+    {
+      "oracle_id": "loose-food-001",
+      "name": "Loose Food Engine",
+      "roles": ["WIN_CONDITION"],
+      "type_line": "Artifact",
+      "oracle_text": "At the beginning of combat, create a Food token.",
+      "cmc": 4.0
+    },
+    {
+      "oracle_id": "loose-map-001",
+      "name": "Loose Map Engine",
+      "roles": ["ENABLER"],
+      "type_line": "Artifact",
+      "oracle_text": "Whenever an artifact enters, create a Map token.",
+      "cmc": 4.0
+    },
+    {
+      "oracle_id": "random-creature-001",
+      "name": "Random Combat Creature",
+      "roles": ["WIN_CONDITION"],
+      "type_line": "Creature - Beast",
+      "oracle_text": "Trample.",
+      "cmc": 5.0
+    },
+    {
+      "oracle_id": "random-creature-002",
+      "name": "Random Vanilla Creature",
+      "roles": ["WIN_CONDITION"],
+      "type_line": "Creature - Elemental",
+      "oracle_text": "",
+      "cmc": 6.0
+    },
+    {
+      "oracle_id": "landfall-001",
+      "name": "Landfall Payoff",
+      "roles": ["LANDFALL_SYNERGY"],
+      "type_line": "Creature - Elemental",
+      "oracle_text": "Landfall - Whenever a land enters under your control, put a +1/+1 counter on this creature.",
+      "cmc": 3.0
+    },
+    {
+      "oracle_id": "ramp-001",
+      "name": "Green Ramp",
+      "roles": ["RAMP"],
+      "type_line": "Sorcery",
+      "oracle_text": "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+      "cmc": 3.0
+    }
+  ],
+  "unsupported_package": {
+    "package_id": "loose-artifact-value",
+    "label": "Loose Treasure Clue Food Map artifact value",
+    "confidence": 0.72,
+    "card_oracle_ids": [
+      "loose-treasure-001",
+      "loose-clue-001",
+      "loose-food-001",
+      "loose-map-001"
+    ],
+    "top_roles": ["artifact value", "Treasure", "Clue", "Food", "Map"]
+  }
+}

@@ -38,7 +38,8 @@ const recommendations: RecommendationResponse = {
         archetype_label: "Graveyard Value",
         missing_core_notes: ["Skullclamp"]
       },
-      roles_covered: { RAMP: 8, DRAW: 5 }
+      roles_covered: { RAMP: 8, DRAW: 5 },
+      support_confidence: "curated"
     }
   ]
 };
@@ -46,12 +47,15 @@ const recommendations: RecommendationResponse = {
 const deck: GeneratedDeckResponse = {
   deck_id: "deck-1",
   session_id: "session-test",
+  generation_status: "success",
   commander: {
     oracle_id: "cmd-1",
     name: "Meren of Clan Nel Toth",
     is_owned: true,
     quantity: 1,
     roles: ["COMMANDER"],
+    assigned_role: null,
+    secondary_role_credit: {},
     package_ids: ["pkg-graveyard"],
     selection_reason: "Commander supports recursion.",
     synergy_score: 1
@@ -63,6 +67,8 @@ const deck: GeneratedDeckResponse = {
       is_owned: true,
       quantity: 1,
       roles: ["RAMP"],
+      assigned_role: "RAMP",
+      secondary_role_credit: {},
       package_ids: [],
       selection_reason: "Efficient ramp.",
       synergy_score: 0.8
@@ -73,6 +79,8 @@ const deck: GeneratedDeckResponse = {
       is_owned: false,
       quantity: 1,
       roles: ["DRAW"],
+      assigned_role: "DRAW",
+      secondary_role_credit: {},
       package_ids: [],
       selection_reason: "Turns small creatures into cards.",
       synergy_score: 0.76
@@ -86,7 +94,21 @@ const deck: GeneratedDeckResponse = {
       target_max: 12,
       actual_count: 1,
       is_satisfied: false,
-      warning: "RAMP underfilled."
+      warning: "RAMP underfilled.",
+      credit_sum: 1,
+      credit_satisfied: false,
+      credit_warning: null
+    },
+    {
+      role: "CARD_DRAW",
+      target_min: 6,
+      target_max: 10,
+      actual_count: 8,
+      is_satisfied: true,
+      warning: null,
+      credit_sum: 3.5,
+      credit_satisfied: false,
+      credit_warning: "CARD_DRAW credit under minimum."
     }
   ],
   package_breakdown: [
@@ -95,14 +117,26 @@ const deck: GeneratedDeckResponse = {
       label: "Graveyard recursion",
       confidence: 0.91,
       card_oracle_ids: ["cmd-1"],
-      top_roles: ["RECURSION"]
+      top_roles: ["RECURSION"],
+      activation_status: "active",
+      selected_count: 1,
+      raw_selected_count: 1
     }
   ],
   warnings: ["RAMP underfilled."],
   owned_count: 2,
   owned_percentage: 0.66,
-  is_valid: false,
+  is_valid: true,
   validation_errors: [],
+  strategic_coherence: {
+    primary_plan: "graveyard",
+    confidence: 0.82,
+    active_package_ids: ["pkg-graveyard"],
+    on_plan_count: 12,
+    off_plan_count: 3,
+    warning_card_oracle_ids: ["skullclamp", "sol-ring"],
+    warnings: []
+  },
   upgrade_suggestions: [
     {
       oracle_id: "viscera-seer",
@@ -172,12 +206,15 @@ const savedDeckDetail: SavedDeckDetail = {
   deck: {
     deck_id: "saved-deck-1",
     session_id: "session-test",
+    generation_status: "success",
     commander: {
       oracle_id: "atraxa-id",
       name: "Atraxa, Praetors' Voice",
       is_owned: true,
       quantity: 1,
       roles: ["COMMANDER"],
+      assigned_role: null,
+      secondary_role_credit: {},
       package_ids: [],
       selection_reason: "Saved commander.",
       synergy_score: 1
@@ -189,6 +226,8 @@ const savedDeckDetail: SavedDeckDetail = {
         is_owned: true,
         quantity: 1,
         roles: ["RAMP"],
+        assigned_role: "RAMP",
+        secondary_role_credit: {},
         package_ids: [],
         selection_reason: "Saved ramp.",
         synergy_score: 0.7
@@ -202,6 +241,7 @@ const savedDeckDetail: SavedDeckDetail = {
     owned_percentage: 1.0,
     is_valid: true,
     validation_errors: [],
+    strategic_coherence: null,
     upgrade_suggestions: [],
     card_explanations: {}
   }
@@ -307,6 +347,17 @@ describe("frontend MVP flow", () => {
     expect(await screen.findByText("Fit 87%")).toBeInTheDocument();
   });
 
+  test("test_recommendations_page_shows_support_confidence", async () => {
+    render(<App />);
+
+    await uploadAndImport();
+
+    expect(
+      await screen.findByLabelText("Curated recommendation")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Curated")).toBeInTheDocument();
+  });
+
   test("test_deck_viewer_shows_commander", async () => {
     render(<App />);
 
@@ -334,6 +385,76 @@ describe("frontend MVP flow", () => {
     expect(await screen.findByText("Role breakdown")).toBeInTheDocument();
     expect(screen.getByText("RAMP")).toBeInTheDocument();
     expect(screen.getByText("RAMP: 1/10-12 - RAMP underfilled.")).toBeInTheDocument();
+  });
+
+  test("test_quota_panel_renders_credit_shortfall_text", async () => {
+    render(<App />);
+
+    await importAndGenerate();
+
+    expect(
+      await screen.findByText(
+        "CARD_DRAW: 8/6-10, credit 3.5/6 - CARD_DRAW credit under minimum."
+      )
+    ).toBeInTheDocument();
+  });
+
+  test("test_quota_panel_omits_credit_warning_when_credit_is_satisfied", async () => {
+    api.generateDeck.mockResolvedValueOnce({
+      ...deck,
+      quota_status: [
+        {
+          role: "RAMP",
+          target_min: 10,
+          target_max: 12,
+          actual_count: 11,
+          is_satisfied: true,
+          warning: null,
+          credit_sum: 10.5,
+          credit_satisfied: true,
+          credit_warning: null
+        }
+      ]
+    });
+    render(<App />);
+
+    await importAndGenerate();
+
+    expect(await screen.findByText("RAMP: 11/10-12")).toBeInTheDocument();
+    expect(screen.queryByText(/credit 10.5/)).not.toBeInTheDocument();
+  });
+
+  test("test_deck_viewer_shows_primary_plan_when_returned", async () => {
+    render(<App />);
+
+    await importAndGenerate();
+
+    expect(await screen.findByText("Strategic coherence")).toBeInTheDocument();
+    expect(screen.getByText("Graveyard")).toBeInTheDocument();
+    expect(screen.getByText("Confidence 82%")).toBeInTheDocument();
+    expect(screen.getByText("Active packages: pkg-graveyard")).toBeInTheDocument();
+  });
+
+  test("test_deck_viewer_shows_warning_candidate_count", async () => {
+    render(<App />);
+
+    await importAndGenerate();
+
+    expect(await screen.findByText("Warning candidates 2")).toBeInTheDocument();
+  });
+
+  test("test_deck_viewer_shows_low_coherence_warning", async () => {
+    api.generateDeck.mockResolvedValueOnce(lowCoherenceDeck());
+    render(<App />);
+
+    await importAndGenerate();
+
+    expect(await screen.findByText("Deck warnings")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Strategic coherence is low: no clear primary commander plan was identified."
+      )
+    ).toBeInTheDocument();
   });
 
   test("test_deck_viewer_groups_upgrade_suggestions", async () => {
@@ -370,6 +491,82 @@ describe("frontend MVP flow", () => {
 
     const exportBox = await screen.findByLabelText("Plaintext deck export");
     expect((exportBox as HTMLTextAreaElement).value).toContain("Commander");
+  });
+
+  test("test_frontend_disables_export_for_invalid_deck", async () => {
+    api.generateDeck.mockResolvedValueOnce(invalidDeck());
+    render(<App />);
+
+    await importAndGenerate();
+
+    expect(
+      await screen.findByText(
+        "Generation failed validation. Export is disabled until the deck passes Commander legality checks."
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText("Deck has 101 cards.")).toBeInTheDocument();
+    expect(screen.getByText("Export plaintext")).toBeDisabled();
+    expect(api.exportPlaintextDeck).not.toHaveBeenCalled();
+  });
+
+  test("test_frontend_distinguishes_failed_quality_from_failed_validation", async () => {
+    api.generateDeck.mockResolvedValueOnce(failedQualityDeck());
+    render(<App />);
+
+    await importAndGenerate();
+
+    expect(
+      await screen.findByText(
+        "Deck generation failed quality checks. Export is disabled until quota, coherence, and win-condition gaps are repaired."
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText("Export plaintext")).toBeDisabled();
+  });
+
+  test("test_frontend_displays_package_activation_status_and_core_count", async () => {
+    api.generateDeck.mockResolvedValueOnce({
+      ...deck,
+      package_breakdown: [
+        {
+          package_id: "pkg-token",
+          label: "Token package",
+          confidence: 0.7,
+          card_oracle_ids: ["a", "b", "c"],
+          top_roles: ["TOKEN_MAKER"],
+          activation_status: "inactive_bad_composition",
+          selected_count: 1,
+          raw_selected_count: 3
+        }
+      ]
+    });
+    render(<App />);
+
+    await importAndGenerate();
+
+    expect(
+      await screen.findByText("Inactive Bad Composition - 1 core selected (3 raw)")
+    ).toBeInTheDocument();
+  });
+
+  test("test_export_includes_coherence_warning_when_present", async () => {
+    api.generateDeck.mockResolvedValueOnce(lowCoherenceDeck());
+    api.exportPlaintextDeck.mockResolvedValueOnce({
+      format: "plaintext",
+      text:
+        "Commander\n1 Meren of Clan Nel Toth\n\nMain Deck\n1 Skullclamp [missing]\n\nWarnings\n- Strategic coherence is low: no clear primary commander plan was identified.",
+      warnings: [
+        "Strategic coherence is low: no clear primary commander plan was identified."
+      ]
+    });
+    render(<App />);
+
+    await importAndGenerate();
+    await userEvent.click(await screen.findByText("Export plaintext"));
+
+    const exportBox = await screen.findByLabelText("Plaintext deck export");
+    expect((exportBox as HTMLTextAreaElement).value).toContain(
+      "Strategic coherence is low"
+    );
   });
 });
 
@@ -515,4 +712,40 @@ async function importAndGenerate() {
   await uploadAndImport();
   await userEvent.click(await screen.findByText("Generate deck"));
   await waitFor(() => expect(api.generateDeck).toHaveBeenCalled());
+}
+
+function lowCoherenceDeck(): GeneratedDeckResponse {
+  const warning =
+    "Strategic coherence is low: no clear primary commander plan was identified.";
+  return {
+    ...deck,
+    warnings: [warning],
+    strategic_coherence: {
+      primary_plan: null,
+      confidence: 0.18,
+      active_package_ids: [],
+      on_plan_count: 1,
+      off_plan_count: 14,
+      warning_card_oracle_ids: ["skullclamp", "sol-ring", "viscera-seer"],
+      warnings: [warning]
+    }
+  };
+}
+
+function invalidDeck(): GeneratedDeckResponse {
+  return {
+    ...deck,
+    generation_status: "failed_validation",
+    is_valid: false,
+    validation_errors: ["Deck has 101 cards."],
+    warnings: ["Generation failed validation."]
+  };
+}
+
+function failedQualityDeck(): GeneratedDeckResponse {
+  return {
+    ...deck,
+    generation_status: "failed_quality",
+    warnings: ["Deck quality failure: WIN_CONDITION underfilled."]
+  };
 }

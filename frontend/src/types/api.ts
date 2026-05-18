@@ -53,6 +53,8 @@ export interface DeckCard {
   is_owned: boolean;
   quantity: number;
   roles: string[];
+  assigned_role: string | null;
+  secondary_role_credit: Record<string, number>;
   package_ids: string[];
   selection_reason: string;
   synergy_score: number;
@@ -65,6 +67,9 @@ export interface QuotaStatus {
   actual_count: number;
   is_satisfied: boolean;
   warning: string | null;
+  credit_sum: number;
+  credit_satisfied: boolean;
+  credit_warning: string | null;
 }
 
 export interface PackageBreakdown {
@@ -73,6 +78,9 @@ export interface PackageBreakdown {
   confidence: number;
   card_oracle_ids: string[];
   top_roles: string[];
+  activation_status: string;
+  selected_count: number;
+  raw_selected_count: number;
 }
 
 export type UpgradePriority = "core" | "recommended" | "optional";
@@ -102,6 +110,12 @@ export interface CardExplanation {
 export interface GeneratedDeckResponse {
   deck_id: string;
   session_id: string;
+  generation_status:
+    | "success"
+    | "failed_validation"
+    | "failed_quality"
+    | "needs_repair"
+    | "low_confidence";
   commander: DeckCard;
   main_deck: DeckCard[];
   role_breakdown: Record<string, number>;
@@ -114,6 +128,17 @@ export interface GeneratedDeckResponse {
   validation_errors: string[];
   upgrade_suggestions: UpgradeSuggestion[];
   card_explanations: Record<string, CardExplanation>;
+  strategic_coherence: StrategicCoherenceReport | null;
+}
+
+export interface StrategicCoherenceReport {
+  primary_plan: string | null;
+  confidence: number;
+  active_package_ids: string[];
+  on_plan_count: number;
+  off_plan_count: number;
+  warning_card_oracle_ids: string[];
+  warnings: string[];
 }
 
 export interface DeckExportResponse {

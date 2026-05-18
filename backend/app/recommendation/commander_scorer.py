@@ -1,8 +1,9 @@
 """Commander collection fit scorer (SC-CMD-002)."""
 from __future__ import annotations
 
+import math
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from app.models.card import CardData
 from app.recommendation.legality_validator import LegalityValidator
@@ -17,7 +18,8 @@ _CORE_ROLES: list[CardRole] = [
     CardRole.LAND,
 ]
 
-_MAX_EXPECTED_OWNED = 99  # normalises owned_count to [0, 1]
+_OWNED_SUPPORT_SCALE = 1200  # asymptotic scale; broad collections never all round to 1.0
+_ROLE_DEPTH_CAP = 5  # 5+ cards per core role = full credit for that role
 
 
 @dataclass
@@ -53,17 +55,17 @@ class CommanderScorer:
         valid = self._validator.filter_color_identity(commander, valid)
 
         owned_count = len(valid)
-        owned_ratio = min(owned_count / _MAX_EXPECTED_OWNED, 1.0)
+        owned_ratio = 1.0 - math.exp(-owned_count / _OWNED_SUPPORT_SCALE)
 
         roles_covered: dict[str, int] = defaultdict(int)
         for card in valid:
             for tag in self._tagger.tag(card):
                 roles_covered[tag.role.value] += 1
 
-        core_roles_hit = sum(
-            1 for role in _CORE_ROLES if roles_covered.get(role.value, 0) > 0
-        )
-        role_score = core_roles_hit / len(_CORE_ROLES)
+        role_score = sum(
+            min(roles_covered.get(role.value, 0), _ROLE_DEPTH_CAP) / _ROLE_DEPTH_CAP
+            for role in _CORE_ROLES
+        ) / len(_CORE_ROLES)
 
         total = 0.6 * owned_ratio + 0.4 * role_score
 

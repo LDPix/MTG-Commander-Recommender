@@ -153,7 +153,12 @@ def test_candidate_pool_marks_owned_cards(meren: CardData, sample_cards: list[Ca
 
 
 def test_candidate_pool_marks_missing_cards(meren: CardData, sample_cards: list[CardData], role_tags_for_all: dict[str, list[RoleTag]], cards_by_name: dict[str, CardData]) -> None:
-    """Cards not in owned_oracle_ids are marked is_owned=False."""
+    """Non-basic cards not in owned_oracle_ids are marked is_owned=False.
+
+    SC-MANA-007: regular canonical basics are always is_owned=True (virtual inventory).
+    """
+    from app.recommendation.deck_candidate_pool import CANONICAL_BASIC_LAND_NAMES
+
     pool = DeckCandidatePool().build(
         commander=meren,
         owned_cards=[],
@@ -161,13 +166,20 @@ def test_candidate_pool_marks_missing_cards(meren: CardData, sample_cards: list[
         role_tags=role_tags_for_all,
         owned_oracle_ids=set(),  # no owned cards
     )
-    # All cards should be not owned
     for card in pool:
-        assert card.is_owned is False
+        if card.name in CANONICAL_BASIC_LAND_NAMES:
+            assert card.is_owned is True, f"{card.name} should be virtual-owned (SC-MANA-007)"
+        else:
+            assert card.is_owned is False, f"{card.name} should be unowned"
 
 
 def test_candidate_pool_no_false_owned(meren: CardData, sample_cards: list[CardData], role_tags_for_all: dict[str, list[RoleTag]], cards_by_name: dict[str, CardData]) -> None:
-    """is_owned is never True for a card not in owned_oracle_ids."""
+    """is_owned is never True for a non-basic card not in owned_oracle_ids.
+
+    SC-MANA-007: canonical basics are virtual-owned regardless of collection contents.
+    """
+    from app.recommendation.deck_candidate_pool import CANONICAL_BASIC_LAND_NAMES
+
     forest = cards_by_name["Forest"]
     owned_ids = {forest.oracle_id}
 
@@ -179,7 +191,7 @@ def test_candidate_pool_no_false_owned(meren: CardData, sample_cards: list[CardD
         owned_oracle_ids=owned_ids,
     )
     for card in pool:
-        if card.oracle_id not in owned_ids:
+        if card.oracle_id not in owned_ids and card.name not in CANONICAL_BASIC_LAND_NAMES:
             assert card.is_owned is False, f"{card.name} should not be marked owned"
 
 
@@ -301,7 +313,7 @@ def test_forest_freely_injected_when_user_owns_zero_forests() -> None:
 
     forests = [card for card in pool if card.name == "Forest"]
     assert len(forests) == 1
-    assert forests[0].is_owned is False
+    assert forests[0].is_owned is True  # SC-MANA-007: virtual inventory
 
 
 def test_swamp_freely_injected_when_user_owns_zero_swamps() -> None:
@@ -327,7 +339,7 @@ def test_swamp_freely_injected_when_user_owns_zero_swamps() -> None:
         owned_oracle_ids=set(),
     )
 
-    assert any(card.name == "Swamp" and not card.is_owned for card in pool)
+    assert any(card.name == "Swamp" and card.is_owned for card in pool)  # SC-MANA-007: virtual inventory
 
 
 def test_forest_not_injected_when_user_owns_at_least_one_forest() -> None:
@@ -358,7 +370,8 @@ def test_forest_not_injected_when_user_owns_at_least_one_forest() -> None:
     assert forests[0].is_owned is True
 
 
-def test_freely_injected_basic_is_marked_not_owned() -> None:
+def test_freely_injected_basic_is_marked_owned() -> None:
+    """SC-MANA-007: injected regular basic is virtual inventory → is_owned=True."""
     commander = _basic_test_card(
         "cmd-green",
         "Mono Green Commander",
@@ -383,7 +396,7 @@ def test_freely_injected_basic_is_marked_not_owned() -> None:
     )
 
     injected_forest = next(card for card in pool if card.name == "Forest")
-    assert injected_forest.is_owned is False
+    assert injected_forest.is_owned is True
 
 
 def test_snow_covered_forest_not_injected_when_not_owned() -> None:
@@ -441,77 +454,192 @@ def test_basic_injection_uses_oracle_id_from_all_cards() -> None:
     assert injected_forest.oracle_id == "stable-forest-oracle"
 
 
-def test_c_activation_cost_card_excluded_when_not_enough_colorless_sources() -> None:
+def test_c_requirement_cards_no_longer_excluded_at_pool_stage() -> None:
+    """SC-DECK-010 binary gate removed: {C}-mana-cost cards always enter the pool."""
     commander = _basic_test_card(
-        "cmd-green",
-        "Mono Green Commander",
-        ["G"],
-        "Legendary Creature — Elf",
+        "cmd-green", "Mono Green Commander", ["G"], "Legendary Creature — Elf",
     )
     forest = _basic_test_card(
-        "forest-oracle",
-        "Forest",
-        ["G"],
-        "Basic Land — Forest",
-        "({T}: Add {G}.)",
-    )
-    glaring_fleshraker = _basic_test_card(
-        "glaring-fleshraker",
-        "Glaring Fleshraker",
-        [],
-        "Creature — Eldrazi",
-        "{C}: Glaring Fleshraker gets +1/+1 until end of turn.",
-    )
-
-    pool = DeckCandidatePool().build(
-        commander=commander,
-        owned_cards=[glaring_fleshraker],
-        all_cards=[commander, forest, glaring_fleshraker],
-        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
-        owned_oracle_ids={glaring_fleshraker.oracle_id},
-    )
-
-    assert glaring_fleshraker.oracle_id not in {card.oracle_id for card in pool}
-
-
-def test_c_activation_cost_card_does_not_count_as_colorless_source() -> None:
-    commander = _basic_test_card(
-        "cmd-green",
-        "Mono Green Commander",
-        ["G"],
-        "Legendary Creature — Elf",
-    )
-    forest = _basic_test_card(
-        "forest-oracle",
-        "Forest",
-        ["G"],
-        "Basic Land — Forest",
-        "({T}: Add {G}.)",
-    )
-    glaring_fleshraker = _basic_test_card(
-        "glaring-fleshraker",
-        "Glaring Fleshraker",
-        [],
-        "Creature — Eldrazi",
-        "{C}: Glaring Fleshraker gets +1/+1 until end of turn.",
+        "forest-oracle", "Forest", ["G"], "Basic Land — Forest", "({T}: Add {G}.)",
     )
     eldrazi_confluence = _basic_test_card(
-        "eldrazi-confluence",
-        "Eldrazi Confluence",
-        [],
-        "Instant",
+        "eldrazi-confluence", "Eldrazi Confluence", [], "Instant",
         "Choose three. You may choose the same mode more than once.",
     )
     eldrazi_confluence.mana_cost = "{2}{C}"
 
     pool = DeckCandidatePool().build(
         commander=commander,
-        owned_cards=[glaring_fleshraker],
-        all_cards=[commander, forest, glaring_fleshraker, eldrazi_confluence],
+        owned_cards=[],
+        all_cards=[commander, forest, eldrazi_confluence],
         role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
-        owned_oracle_ids={glaring_fleshraker.oracle_id},
+        owned_oracle_ids=set(),
     )
 
-    pool_ids = {card.oracle_id for card in pool}
-    assert glaring_fleshraker.oracle_id not in pool_ids
-    assert eldrazi_confluence.oracle_id not in pool_ids
+    assert eldrazi_confluence.oracle_id in {card.oracle_id for card in pool}, (
+        "Eldrazi Confluence must now appear in the pool (binary gate removed)"
+    )
+
+
+def test_deck_candidate_pool_builds_without_colorless_source_count() -> None:
+    """SC-DECK-010 binary gate removed: pool builds identically regardless of owned mana rocks."""
+    commander = _basic_test_card(
+        "cmd-green-2", "Mono Green Commander 2", ["G"], "Legendary Creature — Elf",
+    )
+    forest = _basic_test_card(
+        "forest-oracle-2", "Forest", ["G"], "Basic Land — Forest", "({T}: Add {G}.)",
+    )
+    eldrazi = _basic_test_card(
+        "eldrazi-test-002", "Test Eldrazi", [], "Creature — Eldrazi", "",
+    )
+    eldrazi.mana_cost = "{3}{C}"
+
+    pool_no_rocks = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, forest, eldrazi],
+        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids=set(),
+    )
+    pool_ids = {card.oracle_id for card in pool_no_rocks}
+    assert eldrazi.oracle_id in pool_ids, (
+        "Pool build must not gate {C}-requirement cards based on owned source count"
+    )
+
+
+# ---------------------------------------------------------------------------
+# SC-MANA-007: Basic land virtual inventory
+# ---------------------------------------------------------------------------
+
+
+def test_injected_regular_basic_is_marked_owned_sc_mana_007() -> None:
+    """SC-MANA-007: injected regular basic gets is_owned=True (virtual inventory)."""
+    commander = _basic_test_card("cmd-g", "Commander", ["G"], "Legendary Creature — Elf")
+    forest = _basic_test_card("forest-oid", "Forest", ["G"], "Basic Land — Forest", "({T}: Add {G}.)")
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, forest],
+        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids=set(),
+        max_pool_size=0,
+    )
+
+    injected = next(c for c in pool if c.name == "Forest")
+    assert injected.is_owned is True, "Regular injected Forest must be virtual-owned"
+
+
+def test_unowned_basic_in_main_pool_is_upgraded_to_virtual_owned() -> None:
+    """SC-MANA-007: Forest present in all_cards but not owned → still marked is_owned=True."""
+    commander = _basic_test_card("cmd-g2", "Commander", ["G"], "Legendary Creature — Elf")
+    forest = _basic_test_card("forest-oid2", "Forest", ["G"], "Basic Land — Forest", "({T}: Add {G}.)")
+
+    # Forest is in all_cards but NOT in owned_oracle_ids — max_pool_size=10 so it enters main loop
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, forest],
+        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids=set(),
+        max_pool_size=10,
+    )
+
+    forest_card = next(c for c in pool if c.name == "Forest")
+    assert forest_card.is_owned is True, "Forest in main pool but not owned must still be virtual-owned"
+
+
+def test_injected_regular_basic_not_in_missing_count() -> None:
+    """SC-MANA-007: virtual-owned basics produce no missing_card warnings."""
+    commander = _basic_test_card("cmd-g3", "Commander", ["G"], "Legendary Creature — Elf")
+    forest = _basic_test_card("forest-oid3", "Forest", ["G"], "Basic Land — Forest", "({T}: Add {G}.)")
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, forest],
+        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids=set(),
+        max_pool_size=0,
+    )
+
+    # is_owned=True means no "missing_card" warning in score logs
+    forest_card = next(c for c in pool if c.name == "Forest")
+    assert forest_card.is_owned is True
+    unowned_in_pool = [c for c in pool if not c.is_owned]
+    assert all(c.name != "Forest" for c in unowned_in_pool), "Forest must not appear in unowned list"
+
+
+def test_snow_covered_basic_not_injected_as_virtual() -> None:
+    """SC-MANA-007: Snow-Covered Forest is NOT marked virtual-owned (luxury variant)."""
+    commander = _basic_test_card("cmd-g4", "Commander", ["G"], "Legendary Creature — Elf")
+    forest = _basic_test_card("forest-oid4", "Forest", ["G"], "Basic Land — Forest", "({T}: Add {G}.)")
+    snow_forest = _basic_test_card(
+        "snow-forest-oid", "Snow-Covered Forest", ["G"], "Basic Snow Land — Forest", "({T}: Add {G}.)"
+    )
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, forest, snow_forest],
+        role_tags={
+            forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")],
+            snow_forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")],
+        },
+        owned_oracle_ids=set(),
+        max_pool_size=10,
+    )
+
+    snow_card = next((c for c in pool if c.name == "Snow-Covered Forest"), None)
+    # Snow-Covered Forest may or may not appear in the pool, but must NOT be virtual-owned
+    if snow_card is not None:
+        assert snow_card.is_owned is False, "Snow-Covered Forest must remain collection-dependent"
+
+
+def test_basic_land_not_in_upgrade_suggestions() -> None:
+    """SC-MANA-007: virtual-owned Forest is excluded from upgrade suggestions."""
+    from app.models.deck import GeneratedDeck, PackageCluster, QuotaStatus
+    from app.recommendation.upgrade_suggester import UpgradeSuggester
+
+    commander = _basic_test_card("cmd-g5", "Commander", ["G"], "Legendary Creature — Elf")
+    forest = _basic_test_card("forest-oid5", "Forest", ["G"], "Basic Land — Forest", "({T}: Add {G}.)")
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, forest],
+        role_tags={forest.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]},
+        owned_oracle_ids=set(),
+        max_pool_size=0,
+    )
+
+    forest_deck_card = next(c for c in pool if c.name == "Forest")
+    commander_deck_card = forest_deck_card.model_copy(
+        update={"oracle_id": commander.oracle_id, "name": commander.name, "is_owned": True}
+    )
+    deck = GeneratedDeck(
+        deck_id="mana007-test",
+        session_id="mana007-test",
+        commander=commander_deck_card,
+        main_deck=[forest_deck_card],
+        role_breakdown={},
+        quota_status=[],
+        package_breakdown=[],
+        warnings=[],
+        owned_count=1,
+        owned_percentage=100.0,
+        is_valid=True,
+        validation_errors=[],
+    )
+    quota_status = [QuotaStatus(role="LAND", target_min=1, target_max=36, actual_count=1, is_satisfied=True)]
+
+    suggestions = UpgradeSuggester().suggest(
+        commander=commander,
+        generated_deck=deck,
+        candidate_pool=pool,
+        packages=[],
+        quota_status=quota_status,
+    )
+
+    suggested_names = {s.name for s in suggestions}
+    assert "Forest" not in suggested_names, "Virtual-owned Forest must not appear in upgrade suggestions"

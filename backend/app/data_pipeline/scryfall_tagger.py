@@ -143,6 +143,7 @@ _TAG_TO_ROLES: dict[str, list[tuple[CardRole, float]]] = {
     "utility mana rock": [(CardRole.MANA_FIXING, 0.8)],
     # ARISTOCRATS_SYNERGY
     "aristocrats payoff": [(CardRole.ARISTOCRATS_SYNERGY, 0.9)],
+    "blood artist ability": [(CardRole.ARISTOCRATS_SYNERGY, 0.9)],
     "death trigger": [(CardRole.ARISTOCRATS_SYNERGY, 0.8)],
     "on-death trigger": [(CardRole.ARISTOCRATS_SYNERGY, 0.85)],
     "death payoff": [(CardRole.ARISTOCRATS_SYNERGY, 0.8)],

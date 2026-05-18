@@ -115,6 +115,7 @@ class TestGeneratedDeckResponse:
             card_explanations={},
         )
         assert response.is_valid is False
+        assert response.generation_status == "failed_validation"
         assert len(response.warnings) == 1
         assert len(response.validation_errors) == 1
 
@@ -238,6 +239,18 @@ class TestDeckExportSchemas:
     def test_deck_export_request_rejects_structurally_impossible_count(self):
         deck = self._make_generated_deck()
         deck.main_deck = deck.main_deck[:-1]
+
+        with pytest.raises(ValidationError):
+            DeckExportRequest(deck=deck)
+
+    def test_deck_export_request_rejects_invalid_deck(self):
+        deck = self._make_generated_deck().model_copy(
+            update={
+                "is_valid": False,
+                "validation_errors": ["Deck contains duplicate non-basic cards."],
+                "generation_status": "failed_validation",
+            }
+        )
 
         with pytest.raises(ValidationError):
             DeckExportRequest(deck=deck)

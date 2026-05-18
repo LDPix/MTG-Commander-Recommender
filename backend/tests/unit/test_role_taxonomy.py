@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.recommendation.package_density import COMPOSITION_OUTCOME_ROLES
 from app.recommendation.role_taxonomy import (
     ROLE_DEFINITIONS,
     ROLE_EXAMPLES,
@@ -22,7 +23,7 @@ REQUIRED_ROLES = {
     CardRole.RECURSION,
     CardRole.SACRIFICE_OUTLET,
     CardRole.TOKEN_MAKER,
-    CardRole.PAYOFF,
+    CardRole.WIN_CONDITION,
 }
 
 
@@ -95,3 +96,26 @@ def test_role_tag_all_valid_sources() -> None:
     for source in ("rule_based", "manual", "external"):
         tag = RoleTag(role=CardRole.LAND, confidence=1.0, source=source)  # type: ignore[arg-type]
         assert tag.source == source
+
+
+# ---------------------------------------------------------------------------
+# SC-TAG-003: PAYOFF role removal
+# ---------------------------------------------------------------------------
+
+def test_payoff_role_does_not_exist_in_enum() -> None:
+    """SC-TAG-003: CardRole.PAYOFF must not exist after cleanup."""
+    assert not hasattr(CardRole, "PAYOFF")
+    assert "PAYOFF" not in [r.value for r in CardRole]
+
+
+def test_blood_artist_example_cards_present_under_aristocrats_synergy() -> None:
+    """SC-TAG-003: example cards formerly under PAYOFF appear under ARISTOCRATS_SYNERGY."""
+    examples = ROLE_EXAMPLES[CardRole.ARISTOCRATS_SYNERGY]
+    assert "Blood Artist" in examples
+    assert "Zulaport Cutthroat" in examples
+
+
+def test_composition_outcome_roles_contains_no_payoff_string() -> None:
+    """SC-TAG-003: COMPOSITION_OUTCOME_ROLES (formerly COMPOSITION_PAYOFF_ROLES) has no PAYOFF."""
+    assert "PAYOFF" not in COMPOSITION_OUTCOME_ROLES
+    assert all(r in [role.value for role in CardRole] for r in COMPOSITION_OUTCOME_ROLES)

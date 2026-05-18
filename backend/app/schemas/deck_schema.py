@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class DeckGenerateRequest(BaseModel):
@@ -24,6 +25,8 @@ class DeckCardSchema(BaseModel):
     is_owned: bool
     quantity: int
     roles: list[str]
+    assigned_role: str | None = None
+    secondary_role_credit: dict[str, float] = Field(default_factory=dict)
     package_ids: list[str]
     selection_reason: str
     synergy_score: float
@@ -36,6 +39,9 @@ class QuotaStatusSchema(BaseModel):
     actual_count: int
     is_satisfied: bool
     warning: str | None
+    credit_sum: float = 0.0
+    credit_satisfied: bool = True
+    credit_warning: str | None = None
 
 
 class PackageSchema(BaseModel):
@@ -44,6 +50,9 @@ class PackageSchema(BaseModel):
     confidence: float
     card_oracle_ids: list[str]
     top_roles: list[str]
+    activation_status: str = "detected"
+    selected_count: int = 0
+    raw_selected_count: int = 0
 
 
 class UpgradeSuggestionSchema(BaseModel):
@@ -68,9 +77,28 @@ class CardExplanationSchema(BaseModel):
     is_owned: bool
 
 
+class StrategicCoherenceSchema(BaseModel):
+    primary_plan: str | None = None
+    confidence: float
+    active_package_ids: list[str]
+    on_plan_count: int
+    off_plan_count: int
+    warning_card_oracle_ids: list[str]
+    warnings: list[str]
+    confidence_cap_reasons: list[str] = Field(default_factory=list)
+
+
 class GeneratedDeckResponse(BaseModel):
     deck_id: str
     session_id: str
+    generation_status: Literal[
+        "success",
+        "failed_validation",
+        "failed_quality",
+        "needs_repair",
+        "low_confidence",
+        "generated_with_collection_gap",
+    ] = "success"
     commander: DeckCardSchema
     main_deck: list[DeckCardSchema]
     role_breakdown: dict[str, int]
@@ -81,8 +109,15 @@ class GeneratedDeckResponse(BaseModel):
     owned_percentage: float
     is_valid: bool
     validation_errors: list[str]
-    upgrade_suggestions: list[UpgradeSuggestionSchema] = []
-    card_explanations: dict[str, CardExplanationSchema] = {}
+    upgrade_suggestions: list[UpgradeSuggestionSchema] = Field(default_factory=list)
+    card_explanations: dict[str, CardExplanationSchema] = Field(default_factory=dict)
+    strategic_coherence: StrategicCoherenceSchema | None = None
+
+    @model_validator(mode="after")
+    def failed_validation_status_must_be_explicit(self) -> "GeneratedDeckResponse":
+        if not self.is_valid or self.validation_errors:
+            self.generation_status = "failed_validation"
+        return self
 
 
 class SavedDeckSummaryResponse(BaseModel):
@@ -117,6 +152,10 @@ class DeckExportRequest(BaseModel):
 
     @model_validator(mode="after")
     def deck_count_must_be_structurally_possible(self) -> "DeckExportRequest":
+        if self.deck.generation_status == "failed_validation" or not self.deck.is_valid:
+            raise ValueError("Cannot export invalid generated deck")
+        if self.deck.validation_errors:
+            raise ValueError("Cannot export deck with validation errors")
         if self.deck.commander.quantity != 1:
             raise ValueError("Commander export requires exactly one commander")
 
