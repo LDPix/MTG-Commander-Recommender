@@ -1,8 +1,6 @@
 """Unit tests for plaintext deck export formatting (SC-EXPORT-001)."""
 from __future__ import annotations
 
-import pytest
-
 from app.recommendation.deck_exporter import export_deck_to_plaintext
 from app.schemas.deck_schema import (
     DeckCardSchema,
@@ -119,11 +117,13 @@ def test_plaintext_export_includes_warnings_when_present():
     assert "Deck has quota warnings: RAMP underfilled." in warnings
 
 
-def test_invalid_generated_deck_not_exportable():
+def test_exporter_includes_validation_errors_when_called_directly():
     deck = _deck(
         is_valid=False,
         validation_errors=["Deck contains duplicate non-basic cards."],
     )
 
-    with pytest.raises(ValueError, match="failed generated deck"):
-        export_deck_to_plaintext(deck)
+    text, warnings = export_deck_to_plaintext(deck)
+
+    assert "Validation error: Deck contains duplicate non-basic cards." in warnings
+    assert "Validation error: Deck contains duplicate non-basic cards." in text

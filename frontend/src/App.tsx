@@ -29,9 +29,10 @@ function shouldShowCreditStatus(quota: QuotaStatus): boolean {
 
 function isDeckExportable(deck: GeneratedDeckResponse): boolean {
   return (
-    deck.generation_status === "success" &&
     deck.is_valid &&
-    deck.validation_errors.length === 0
+    deck.validation_errors.length === 0 &&
+    deck.generation_status !== "failed_validation" &&
+    deck.generation_status !== "failed_quality"
   );
 }
 

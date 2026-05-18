@@ -107,6 +107,15 @@ export interface CardExplanation {
   is_owned: boolean;
 }
 
+export interface RepairBlocker {
+  failure_type: string;
+  role: string | null;
+  package_id: string | null;
+  oracle_id: string | null;
+  reason: string;
+  detail: string;
+}
+
 export interface GeneratedDeckResponse {
   deck_id: string;
   session_id: string;
@@ -115,7 +124,8 @@ export interface GeneratedDeckResponse {
     | "failed_validation"
     | "failed_quality"
     | "needs_repair"
-    | "low_confidence";
+    | "low_confidence"
+    | "generated_with_collection_gap";
   commander: DeckCard;
   main_deck: DeckCard[];
   role_breakdown: Record<string, number>;
@@ -129,6 +139,7 @@ export interface GeneratedDeckResponse {
   upgrade_suggestions: UpgradeSuggestion[];
   card_explanations: Record<string, CardExplanation>;
   strategic_coherence: StrategicCoherenceReport | null;
+  repair_blockers: RepairBlocker[];
 }
 
 export interface StrategicCoherenceReport {
@@ -139,6 +150,7 @@ export interface StrategicCoherenceReport {
   off_plan_count: number;
   warning_card_oracle_ids: string[];
   warnings: string[];
+  confidence_cap_reasons: string[];
 }
 
 export interface DeckExportResponse {

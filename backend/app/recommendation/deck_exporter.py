@@ -8,11 +8,6 @@ BASIC_LANDS = {"Forest", "Island", "Mountain", "Plains", "Swamp", "Wastes"}
 
 def export_deck_to_plaintext(deck: GeneratedDeckResponse) -> tuple[str, list[str]]:
     """Return stable plaintext decklist output and warnings for a generated deck."""
-    if deck.generation_status in {"failed_validation", "failed_quality"} or not deck.is_valid:
-        raise ValueError("Cannot export failed generated deck.")
-    if deck.validation_errors:
-        raise ValueError("Cannot export deck with validation errors.")
-
     warnings = _collect_warnings(deck)
     sections = [
         "Commander",

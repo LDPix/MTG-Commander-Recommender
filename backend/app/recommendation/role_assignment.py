@@ -203,6 +203,8 @@ def _quota_status(
         credit_sum=round(credit_sum, 2),
         credit_satisfied=credit_satisfied,
         credit_warning=credit_warning,
+        effective_satisfied=is_satisfied and credit_satisfied,
+        count_credit_covered=False,
     )
 
 

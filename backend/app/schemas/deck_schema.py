@@ -42,6 +42,8 @@ class QuotaStatusSchema(BaseModel):
     credit_sum: float = 0.0
     credit_satisfied: bool = True
     credit_warning: str | None = None
+    effective_satisfied: bool = False
+    count_credit_covered: bool = False
 
 
 class PackageSchema(BaseModel):
@@ -88,6 +90,15 @@ class StrategicCoherenceSchema(BaseModel):
     confidence_cap_reasons: list[str] = Field(default_factory=list)
 
 
+class RepairBlockerSchema(BaseModel):
+    failure_type: str
+    role: str | None = None
+    package_id: str | None = None
+    oracle_id: str | None = None
+    reason: str
+    detail: str
+
+
 class GeneratedDeckResponse(BaseModel):
     deck_id: str
     session_id: str
@@ -112,6 +123,7 @@ class GeneratedDeckResponse(BaseModel):
     upgrade_suggestions: list[UpgradeSuggestionSchema] = Field(default_factory=list)
     card_explanations: dict[str, CardExplanationSchema] = Field(default_factory=dict)
     strategic_coherence: StrategicCoherenceSchema | None = None
+    repair_blockers: list[RepairBlockerSchema] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def failed_validation_status_must_be_explicit(self) -> "GeneratedDeckResponse":
@@ -152,10 +164,9 @@ class DeckExportRequest(BaseModel):
 
     @model_validator(mode="after")
     def deck_count_must_be_structurally_possible(self) -> "DeckExportRequest":
-        if self.deck.generation_status == "failed_validation" or not self.deck.is_valid:
-            raise ValueError("Cannot export invalid generated deck")
-        if self.deck.validation_errors:
-            raise ValueError("Cannot export deck with validation errors")
+        if not self.deck.is_valid or self.deck.validation_errors:
+            raise ValueError("invalid generated deck cannot be exported")
+
         if self.deck.commander.quantity != 1:
             raise ValueError("Commander export requires exactly one commander")
 

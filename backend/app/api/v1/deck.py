@@ -19,6 +19,7 @@ from app.schemas.deck_schema import (
     GeneratedDeckResponse,
     PackageSchema,
     QuotaStatusSchema,
+    RepairBlockerSchema,
     SavedDeckDetailResponse,
     SavedDeckListResponse,
     StrategicCoherenceSchema,
@@ -79,6 +80,8 @@ def _serialize(deck: GeneratedDeck) -> GeneratedDeckResponse:
                 credit_sum=q.credit_sum,
                 credit_satisfied=q.credit_satisfied,
                 credit_warning=q.credit_warning,
+                effective_satisfied=q.effective_satisfied,
+                count_credit_covered=q.count_credit_covered,
             )
             for q in deck.quota_status
         ],
@@ -142,6 +145,17 @@ def _serialize(deck: GeneratedDeck) -> GeneratedDeckResponse:
             if deck.strategic_coherence is not None
             else None
         ),
+        repair_blockers=[
+            RepairBlockerSchema(
+                failure_type=blocker.failure_type,
+                role=blocker.role,
+                package_id=blocker.package_id,
+                oracle_id=blocker.oracle_id,
+                reason=blocker.reason,
+                detail=blocker.detail,
+            )
+            for blocker in deck.repair_blockers
+        ],
     )
 
 
@@ -211,14 +225,5 @@ def export_plaintext_deck(request: DeckExportRequest) -> DeckExportResponse:
     FR-18: export accepts the generated deck payload and does not require
     saved deck persistence — deck_id is not needed for export.
     """
-    if (
-        request.deck.generation_status in {"failed_validation", "failed_quality"}
-        or not request.deck.is_valid
-        or request.deck.validation_errors
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail="Cannot export failed generated deck.",
-        )
     text, warnings = export_deck_to_plaintext(request.deck)
     return DeckExportResponse(text=text, warnings=warnings)

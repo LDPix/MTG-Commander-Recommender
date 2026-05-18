@@ -1,6 +1,7 @@
 """Tests for SC-CMD-005: commander support confidence tier."""
 from __future__ import annotations
 
+import functools
 from pathlib import Path
 
 from app.data_pipeline.card_resolver import CardResolver
@@ -242,5 +243,6 @@ def test_score_log_shows_commander_profile_source() -> None:
     assert "commander_profile_source:oracle_id" in analysis_log.selected_reasons
 
 
+@functools.lru_cache(maxsize=1)
 def _real_catalog_resolver() -> CardResolver:
     return CardResolver(load_scryfall_bulk_data(REAL_CATALOG_PATH))

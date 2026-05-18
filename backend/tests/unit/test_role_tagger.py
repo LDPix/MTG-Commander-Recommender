@@ -46,6 +46,24 @@ def test_command_tower_tagged_as_land_and_fixing(
     assert CardRole.MANA_FIXING in roles, f"Expected MANA_FIXING in {roles}"
 
 
+def test_pain_land_tagged_as_land_and_fixing(tagger: RuleTagger) -> None:
+    card = CardData(
+        id="llanowar-wastes-test",
+        oracle_id="llanowar-wastes-test",
+        name="Llanowar Wastes",
+        color_identity=[],
+        legalities={"commander": "legal"},
+        type_line="Land",
+        oracle_text="{T}: Add {C}.\n{T}: Add {B} or {G}. Llanowar Wastes deals 1 damage to you.",
+        cmc=0.0,
+    )
+
+    roles = _roles(tagger.tag(card))
+
+    assert CardRole.LAND in roles
+    assert CardRole.MANA_FIXING in roles
+
+
 def test_swords_to_plowshares_tagged_as_removal(
     tagger: RuleTagger, cards_by_name: dict[str, CardData]
 ) -> None:

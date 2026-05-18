@@ -9,6 +9,8 @@ from app.models.deck import (
     DeckCard,
     GeneratedDeck,
     PackageCluster,
+    QuotaStatus,
+    RepairBlocker,
     StrategicCoherenceReport,
 )
 from app.models.score_log import DATA_VERSION, ScoreLog
@@ -21,15 +23,19 @@ from app.recommendation.package_detector import PackageDetector
 from app.recommendation.package_density import (
     active_package_ids_for_deck,
     is_orphan,
+    package_core_ids_for_deck,
+    package_relevant_to_plan,
     packages_with_activation_status,
 )
 from app.recommendation.package_labeler import PackageLabeler
 from app.recommendation.quota_config import adjust_quotas_for_commander, BASELINE_QUOTAS as _BASELINE_QUOTAS
 from app.recommendation.role_assignment import assign_role_slots
+from app.recommendation.role_credit import role_quality_credit
 from app.recommendation.role_taxonomy import RoleTag
 from app.data_pipeline.scryfall_tagger import get_scryfall_tagger_store
 from app.recommendation.role_tagger import HybridTagger
 from app.recommendation.strategic_coherence import (
+    ACTIVE_PACKAGE_MIN_CARDS,
     MAX_OFF_PLAN_CARDS,
     PLAN_ROLE_HINTS,
     StrategicCoherenceValidator,
@@ -141,6 +147,7 @@ class DeckGenerationService:
             all_cards=all_cards,
             role_tags=role_tags,
             owned_oracle_ids=owned_oracle_ids,
+            all_cards_lookup=all_cards_lookup,
         )
 
         # Step 8: Build synergy graph
@@ -169,6 +176,11 @@ class DeckGenerationService:
         )
 
         # Step 11: Generate deck
+        candidate_active_package_ids = _estimate_candidate_active_packages(
+            candidate_pool=candidate_pool,
+            packages=packages,
+            primary_plan=primary_plan_for_quotas,
+        )
         generator = DeckGenerator()
         deck = generator.generate(
             commander=commander,
@@ -180,6 +192,7 @@ class DeckGenerationService:
             session_id=session_id,
             quotas=quotas,
             all_cards_lookup=all_cards_lookup,
+            candidate_active_package_ids=candidate_active_package_ids,
         )
 
         enriched_candidate_pool = _enrich_candidate_pool(candidate_pool, graph, packages)
@@ -269,6 +282,29 @@ _BASIC_LAND_NAMES: frozenset[str] = frozenset({
     "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp",
     "Snow-Covered Mountain", "Snow-Covered Forest",
 })
+
+
+def _estimate_candidate_active_packages(
+    candidate_pool: list[DeckCard],
+    packages: list[PackageCluster],
+    primary_plan: str | None,
+) -> frozenset[str]:
+    """Return package_ids likely to activate given the owned candidate pool.
+
+    Uses density count only (no graph scoring) — this is a pre-generation estimate.
+    A package is candidate-active if it has >= ACTIVE_PACKAGE_MIN_CARDS owned members
+    and is plan-relevant when primary_plan is known.
+    """
+    owned_pool_ids = {c.oracle_id for c in candidate_pool if c.is_owned}
+    candidate_active: set[str] = set()
+    for pkg in packages:
+        owned_member_count = sum(1 for oid in pkg.card_oracle_ids if oid in owned_pool_ids)
+        if owned_member_count < ACTIVE_PACKAGE_MIN_CARDS:
+            continue
+        if primary_plan is not None and not package_relevant_to_plan(pkg, primary_plan):
+            continue
+        candidate_active.add(pkg.package_id)
+    return frozenset(candidate_active)
 
 
 def _coherence_repair_pass(
@@ -460,12 +496,69 @@ def _is_coherence_warning(warning: str) -> bool:
 
 COHERENCE_FAIL_CLOSED_CONFIDENCE_CAP: float = 0.35
 COHERENCE_VALIDATION_CONFIDENCE_CAP: float = 0.20
+INFRASTRUCTURE_CREDIT_COVERABLE_ROLES: frozenset[str] = frozenset({
+    "RAMP",
+    "CARD_DRAW",
+    "SPOT_REMOVAL",
+    "PROTECTION",
+})
+
+
+def quota_effectively_satisfied(
+    quota: QuotaStatus,
+    strategic_coherence: StrategicCoherenceReport | None,
+) -> bool:
+    """Return True when raw quota status passes, including credit-covered infra gaps."""
+    if quota.is_satisfied and quota.credit_satisfied:
+        return True
+    return quota_count_credit_covered(quota, strategic_coherence)
+
+
+def quota_count_credit_covered(
+    quota: QuotaStatus,
+    strategic_coherence: StrategicCoherenceReport | None,
+) -> bool:
+    """Return True when a one-slot infrastructure count gap is covered by credit."""
+    if quota.role not in INFRASTRUCTURE_CREDIT_COVERABLE_ROLES:
+        return False
+    if quota.actual_count != quota.target_min - 1:
+        return False
+    if quota.actual_count > quota.target_max:
+        return False
+    if quota.credit_sum < quota.target_min or not quota.credit_satisfied:
+        return False
+    if strategic_coherence is None:
+        return False
+    if strategic_coherence.confidence < COHERENCE_FAIL_CLOSED_CONFIDENCE_CAP:
+        return False
+    if strategic_coherence.confidence_cap_reasons:
+        return False
+    return True
+
+
+def _apply_effective_quota_semantics(deck: GeneratedDeck) -> GeneratedDeck:
+    quota_status = [
+        quota.model_copy(
+            update={
+                "effective_satisfied": quota_effectively_satisfied(
+                    quota, deck.strategic_coherence
+                ),
+                "count_credit_covered": quota_count_credit_covered(
+                    quota, deck.strategic_coherence
+                ),
+            }
+        )
+        for quota in deck.quota_status
+    ]
+    return deck.model_copy(update={"quota_status": quota_status})
 
 
 def _finalize_quality_generation_status(deck: GeneratedDeck) -> GeneratedDeck:
     """Mark legal-but-structurally-failed drafts distinctly from successes."""
     if not deck.is_valid or deck.validation_errors:
         return deck.model_copy(update={"generation_status": "failed_validation"})
+
+    deck = _apply_effective_quota_semantics(deck)
 
     # Pool-limited gaps already annotated; export remains enabled
     if deck.generation_status == "generated_with_collection_gap":
@@ -479,12 +572,48 @@ def _finalize_quality_generation_status(deck: GeneratedDeck) -> GeneratedDeck:
         deck.warnings,
         [f"Deck quality failure: {reason}" for reason in failures],
     )
+    repair_blockers = deck.repair_blockers or _generic_repair_blockers(deck)
     return deck.model_copy(
         update={
             "generation_status": "failed_quality",
             "warnings": warnings,
+            "repair_blockers": repair_blockers,
         }
     )
+
+
+def _generic_repair_blockers(deck: GeneratedDeck) -> list[RepairBlocker]:
+    blockers: list[RepairBlocker] = []
+    for quota in deck.quota_status:
+        if quota.warning and not quota.effective_satisfied:
+            blockers.append(
+                RepairBlocker(
+                    failure_type="quota_underfill" if quota.actual_count < quota.target_min else "quota_overfill",
+                    role=quota.role,
+                    reason="role_count_semantics",
+                    detail=quota.warning,
+                )
+            )
+        if quota.credit_warning and not quota.credit_satisfied:
+            blockers.append(
+                RepairBlocker(
+                    failure_type="quota_credit",
+                    role=quota.role,
+                    reason="credit_candidate_not_better",
+                    detail=quota.credit_warning,
+                )
+            )
+    report = deck.strategic_coherence
+    if report is not None:
+        for reason in report.confidence_cap_reasons:
+            blockers.append(
+                RepairBlocker(
+                    failure_type="strategic_coherence",
+                    reason="coherence_blocked",
+                    detail=f"Coherence confidence remains capped by {reason}.",
+                )
+            )
+    return blockers
 
 
 MAX_REPAIR_ITERATIONS: int = 10
@@ -549,6 +678,15 @@ def _multi_pass_quality_repair(
 
     # Detect pool-limited gaps: remaining count failures where the pool has no more candidates
     remaining_failures = _quality_failure_reasons(deck)
+    repair_blockers = _repair_blockers_for_remaining_failures(
+        deck=deck,
+        enriched_candidate_pool=enriched_candidate_pool,
+        all_cards_lookup=all_cards_lookup,
+        quotas=quotas,
+        iteration_budget_exhausted=(
+            repairs_done >= MAX_REPAIR_ITERATIONS and bool(remaining_failures)
+        ),
+    )
     if remaining_failures:
         selected_ids = {c.oracle_id for c in deck.main_deck}
         pool_limited_roles = [
@@ -567,7 +705,131 @@ def _multi_pass_quality_repair(
                 }
             )
 
+    if repair_blockers:
+        deck = deck.model_copy(update={"repair_blockers": repair_blockers})
+
     return deck
+
+
+def _repair_blockers_for_remaining_failures(
+    deck: GeneratedDeck,
+    enriched_candidate_pool: list[DeckCard],
+    all_cards_lookup: dict[str, CardData],
+    quotas: list,
+    iteration_budget_exhausted: bool,
+) -> list[RepairBlocker]:
+    blockers: list[RepairBlocker] = []
+    seen: set[tuple[str, str | None, str | None, str | None, str]] = set()
+
+    def add(
+        failure_type: str,
+        reason: str,
+        detail: str,
+        role: str | None = None,
+        package_id: str | None = None,
+        oracle_id: str | None = None,
+    ) -> None:
+        key = (failure_type, role, package_id, oracle_id, reason)
+        if key in seen:
+            return
+        seen.add(key)
+        blockers.append(
+            RepairBlocker(
+                failure_type=failure_type,
+                role=role,
+                package_id=package_id,
+                oracle_id=oracle_id,
+                reason=reason,
+                detail=detail,
+            )
+        )
+
+    selected_ids = {card.oracle_id for card in deck.main_deck}
+    for quota in deck.quota_status:
+        if quota.actual_count < quota.target_min and not quota_effectively_satisfied(
+            quota, deck.strategic_coherence
+        ):
+            candidates = [
+                card for card in enriched_candidate_pool
+                if card.oracle_id not in selected_ids
+                and quota.role in card.roles
+                and "LAND" not in card.roles
+                and card.oracle_id in all_cards_lookup
+            ]
+            if not candidates:
+                add(
+                    "quota_underfill",
+                    "no_candidate",
+                    f"No unselected candidate can fill {quota.role}.",
+                    role=quota.role,
+                )
+            elif _find_swap_target(deck, quota.role, quotas) is None:
+                add(
+                    "quota_underfill",
+                    "no_safe_removal",
+                    f"{len(candidates)} candidate(s) exist for {quota.role}, but no selected card can be removed without violating another quota.",
+                    role=quota.role,
+                )
+            else:
+                add(
+                    "quota_underfill",
+                    "role_count_semantics",
+                    f"{quota.role} remains below target after repair; candidate and removal path exists, so assigned-role semantics or repair ordering blocked completion.",
+                    role=quota.role,
+                )
+
+        if not quota.credit_satisfied:
+            candidates = [
+                card for card in enriched_candidate_pool
+                if card.oracle_id not in selected_ids
+                and quota.role in card.roles
+                and "LAND" not in card.roles
+                and card.oracle_id in all_cards_lookup
+            ]
+            if not candidates:
+                reason = "no_candidate"
+                detail = f"No unselected candidate can improve {quota.role} credit."
+            else:
+                reason = "credit_candidate_not_better"
+                detail = (
+                    f"{quota.role} credit remains {quota.credit_sum:.1f}/{quota.target_min}; "
+                    "available candidates did not produce a usable credit-improving swap."
+                )
+            add("quota_credit", reason, detail, role=quota.role)
+
+    report = deck.strategic_coherence
+    if report is not None:
+        for oracle_id in report.warning_card_oracle_ids:
+            add(
+                "strategic_coherence",
+                "coherence_blocked",
+                "Selected card remains an off-plan strategic coherence warning after repair.",
+                oracle_id=oracle_id,
+            )
+        for reason in report.confidence_cap_reasons:
+            add(
+                "strategic_coherence",
+                "coherence_blocked",
+                f"Coherence confidence remains capped by {reason}.",
+            )
+
+    for package in deck.package_breakdown:
+        if package.activation_status in {"underfilled", "rejected_loose", "inactive_bad_composition"}:
+            add(
+                "package_activation",
+                "pool_limit" if package.activation_status == "underfilled" else "coherence_blocked",
+                f"Package {package.package_id} remains {package.activation_status} with {package.selected_count} selected card(s).",
+                package_id=package.package_id,
+            )
+
+    if iteration_budget_exhausted:
+        add(
+            "repair_loop",
+            "iteration_budget_exhausted",
+            f"Repair loop reached {MAX_REPAIR_ITERATIONS} iteration(s) with unresolved quality failures.",
+        )
+
+    return blockers
 
 
 def _attempt_one_repair(
@@ -939,6 +1201,101 @@ def _repair_quality_weak_one(
     return deck.model_copy(update={"main_deck": main_deck, "generation_status": "needs_repair"})
 
 
+def _compute_role_credit_sum(
+    deck: GeneratedDeck,
+    role: str,
+    all_cards_lookup: dict[str, CardData],
+) -> float:
+    """Sum role_quality_credit for all cards whose assigned_role matches target role."""
+    return sum(
+        role_quality_credit(all_cards_lookup[c.oracle_id], role)
+        for c in deck.main_deck
+        if c.assigned_role == role and c.oracle_id in all_cards_lookup
+    )
+
+
+def _find_lowest_credit_card(
+    deck: GeneratedDeck,
+    role: str,
+    all_cards_lookup: dict[str, CardData],
+    quotas: list,
+) -> int | None:
+    """Return index of the lowest-credit removable card assigned to target role."""
+    quota_min: dict[str, int] = {q.role.value: q.target_min for q in quotas}
+    role_counts: dict[str, int] = defaultdict(int)
+    for c in deck.main_deck:
+        for r in c.roles:
+            role_counts[r] += c.quantity
+
+    role_cards = [
+        (idx, card)
+        for idx, card in enumerate(deck.main_deck)
+        if role in card.roles
+        and "LAND" not in card.roles
+        and all(
+            role_counts.get(r, 0) - 1 >= quota_min.get(r, 0)
+            for r in card.roles
+            if r != role
+        )
+    ]
+    if not role_cards:
+        return None
+
+    role_cards.sort(
+        key=lambda t: (
+            role_quality_credit(all_cards_lookup[t[1].oracle_id], role)
+            if t[1].oracle_id in all_cards_lookup else 0.0,
+            t[1].oracle_id,
+        )
+    )
+    return role_cards[0][0]
+
+
+def _find_highest_credit_candidate(
+    pool: list[DeckCard],
+    role: str,
+    selected_ids: set[str],
+    all_cards_lookup: dict[str, CardData],
+) -> DeckCard | None:
+    """Return the highest-credit unselected candidate for target role."""
+    candidates = [
+        c for c in pool
+        if c.oracle_id not in selected_ids
+        and role in c.roles
+        and "LAND" not in c.roles
+        and c.oracle_id in all_cards_lookup
+    ]
+    if not candidates:
+        return None
+    candidates.sort(
+        key=lambda c: (
+            -role_quality_credit(all_cards_lookup[c.oracle_id], role),
+            not c.is_owned,
+            -c.synergy_score,
+            c.oracle_id,
+        )
+    )
+    return candidates[0]
+
+
+def _do_swap(
+    deck: GeneratedDeck,
+    remove_idx: int,
+    incoming: DeckCard,
+    role: str,
+) -> GeneratedDeck:
+    """Remove card at remove_idx, insert incoming card with role assignment."""
+    replacement = incoming.model_copy(
+        update={
+            "quantity": 1,
+            "selection_reason": f"quality repair: improved {role} credit",
+        }
+    )
+    main_deck = list(deck.main_deck)
+    main_deck[remove_idx] = replacement
+    return deck.model_copy(update={"main_deck": main_deck, "generation_status": "needs_repair"})
+
+
 def _repair_credit_quality_one(
     deck: GeneratedDeck,
     selected_ids: set[str],
@@ -946,12 +1303,11 @@ def _repair_credit_quality_one(
     all_cards_lookup: dict[str, CardData],
     quotas: list,
 ) -> GeneratedDeck | None:
-    """Replace the lowest-credit role-filler for the quota with the largest credit gap.
+    """Exhaust swaps for the worst credit-gap role before returning.
 
     Only fires when is_satisfied=True but credit_satisfied=False (count-met, credit-not-met).
+    Inner loop cap of 10 prevents infinite loops on pathological inputs.
     """
-    from app.recommendation.role_credit import role_quality_credit
-
     credit_gaps = [
         (q.target_min - q.credit_sum, q)
         for q in deck.quota_status
@@ -963,73 +1319,35 @@ def _repair_credit_quality_one(
     _, worst_quota = credit_gaps[0]
     target_role = worst_quota.role
 
-    quota_min: dict[str, int] = {q.role.value: q.target_min for q in quotas}
-    role_counts: dict[str, int] = defaultdict(int)
-    for c in deck.main_deck:
-        for r in c.roles:
-            role_counts[r] += c.quantity
+    current_deck = deck
+    made_any_swap = False
 
-    role_cards = [
-        (idx, card)
-        for idx, card in enumerate(deck.main_deck)
-        if target_role in card.roles
-        and "LAND" not in card.roles
-        # target_role count stays the same (replacement also has it); only check other roles
-        and all(
-            role_counts.get(r, 0) - 1 >= quota_min.get(r, 0)
-            for r in card.roles
-            if r != target_role
-        )
-    ]
-    if not role_cards:
-        return None
+    for _ in range(10):
+        current_credit = _compute_role_credit_sum(current_deck, target_role, all_cards_lookup)
+        if current_credit >= worst_quota.target_min:
+            break
 
-    role_cards.sort(
-        key=lambda t: (
-            role_quality_credit(all_cards_lookup[t[1].oracle_id], target_role)
-            if t[1].oracle_id in all_cards_lookup else 0.0,
-            t[1].oracle_id,
-        )
-    )
-    swap_idx, swap_card = role_cards[0]
-    swap_credit = (
-        role_quality_credit(all_cards_lookup[swap_card.oracle_id], target_role)
-        if swap_card.oracle_id in all_cards_lookup else 0.0
-    )
+        swap_idx = _find_lowest_credit_card(current_deck, target_role, all_cards_lookup, quotas)
+        if swap_idx is None:
+            break
 
-    candidates = [
-        c for c in enriched_candidate_pool
-        if c.oracle_id not in selected_ids
-        and target_role in c.roles
-        and "LAND" not in c.roles
-        and c.oracle_id in all_cards_lookup
-        and role_quality_credit(all_cards_lookup[c.oracle_id], target_role) > swap_credit
-    ]
-    if not candidates:
-        return None
-    candidates.sort(
-        key=lambda c: (
-            -role_quality_credit(all_cards_lookup[c.oracle_id], target_role),
-            not c.is_owned,
-            -c.synergy_score,
-            c.oracle_id,
+        current_selected = {c.oracle_id for c in current_deck.main_deck}
+        best_candidate = _find_highest_credit_candidate(
+            enriched_candidate_pool, target_role, current_selected, all_cards_lookup
         )
-    )
-    replacement = candidates[0].model_copy(
-        update={
-            "quantity": 1,
-            "selection_reason": f"quality repair: improved {target_role} credit",
-        }
-    )
-    main_deck = list(deck.main_deck)
-    main_deck[swap_idx] = replacement
-    return deck.model_copy(update={"main_deck": main_deck, "generation_status": "needs_repair"})
+        if best_candidate is None:
+            break
+
+        current_deck = _do_swap(current_deck, swap_idx, best_candidate, target_role)
+        made_any_swap = True
+
+    return current_deck if made_any_swap else None
 
 
 def _quality_failure_reasons(deck: GeneratedDeck) -> list[str]:
     reasons: list[str] = []
     for quota in deck.quota_status:
-        if not quota.is_satisfied and quota.warning:
+        if not quota_effectively_satisfied(quota, deck.strategic_coherence) and quota.warning:
             reasons.append(quota.warning)
         if not quota.credit_satisfied and quota.credit_warning:
             reasons.append(quota.credit_warning)
@@ -1069,13 +1387,14 @@ def _finalize_coherence_fail_closed(
 
     cap_reasons = _coherence_cap_reasons(deck, report, packages)
     if not cap_reasons:
-        return deck.model_copy(
+        finalized_deck = deck.model_copy(
             update={
                 "strategic_coherence": report.model_copy(
                     update={"confidence_cap_reasons": []}
                 )
             }
         )
+        return _apply_effective_quota_semantics(finalized_deck)
 
     cap = (
         COHERENCE_VALIDATION_CONFIDENCE_CAP
@@ -1095,7 +1414,7 @@ def _finalize_coherence_fail_closed(
         }
     )
 
-    return deck.model_copy(
+    finalized_deck = deck.model_copy(
         update={
             "strategic_coherence": finalized_report,
             "warnings": _merge_warnings(deck.warnings, finalized_report.warnings),
@@ -1106,6 +1425,7 @@ def _finalize_coherence_fail_closed(
             ),
         }
     )
+    return _apply_effective_quota_semantics(finalized_deck)
 
 
 def _coherence_cap_reasons(
@@ -1116,7 +1436,11 @@ def _coherence_cap_reasons(
     reasons: list[str] = []
     if not deck.is_valid or deck.validation_errors:
         reasons.append("validation_error")
-    if any(not quota.is_satisfied for quota in deck.quota_status):
+    if any(
+        not quota.is_satisfied
+        and not quota_count_credit_covered(quota, report)
+        for quota in deck.quota_status
+    ):
         reasons.append("hard_quota_failure")
     if any(not quota.credit_satisfied for quota in deck.quota_status):
         reasons.append("quota_credit_failure")

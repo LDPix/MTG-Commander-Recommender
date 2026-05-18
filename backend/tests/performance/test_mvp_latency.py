@@ -203,6 +203,10 @@ def test_deck_generation_under_15_seconds(
 
 
 def test_deck_generation_candidate_pool_cap_respected() -> None:
+    # SC-DECK-042: per-role quality caps replaced the global 600-card alphabetical cap.
+    # Roleless cards go to the fallback bucket, capped at _FALLBACK_CAP (120).
+    from app.recommendation.deck_candidate_pool import _FALLBACK_CAP
+
     commander = _card("commander-000", "Perf Commander", color_identity=[])
     all_cards = [commander] + [
         _card(f"candidate-{i:04d}", f"Candidate {i}", color_identity=[])
@@ -217,7 +221,7 @@ def test_deck_generation_candidate_pool_cap_respected() -> None:
         owned_oracle_ids=set(),
     )
 
-    assert len(pool) == CANDIDATE_POOL_CAP
+    assert len(pool) <= _FALLBACK_CAP
 
 
 def _measure(operation):

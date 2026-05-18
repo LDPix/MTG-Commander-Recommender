@@ -79,6 +79,34 @@ BASIC_LAND_NAMES: frozenset[str] = frozenset({
     "Snow-Covered Forest",
 })
 
+ROLE_QUALITY_FLOORS: dict[str, float] = {
+    CardRole.RAMP.value:                0.35,
+    CardRole.CARD_DRAW.value:           0.35,
+    CardRole.SPOT_REMOVAL.value:        0.40,
+    CardRole.BOARD_WIPE.value:          0.40,
+    CardRole.WIN_CONDITION.value:       0.45,
+    CardRole.PROTECTION.value:          0.35,
+    CardRole.SACRIFICE_OUTLET.value:    0.30,
+    CardRole.ARISTOCRATS_SYNERGY.value: 0.30,
+}
+
+
+def _meets_quality_floor(
+    card: DeckCard,
+    role: str,
+    all_cards_lookup: dict | None,
+) -> bool:
+    """Return True if card clears the quality floor for this role, or if no floor is set."""
+    floor = ROLE_QUALITY_FLOORS.get(role)
+    if floor is None or all_cards_lookup is None:
+        return True
+    card_data = all_cards_lookup.get(card.oracle_id)
+    if card_data is None:
+        return True
+    quality = compute_quality_score(card_data, role)
+    credit = role_quality_credit(card_data, role)
+    return quality >= floor or credit >= 0.75
+
 
 def _score(
     card: DeckCard,
@@ -461,6 +489,7 @@ class DeckGenerator:
         session_id: str,
         quotas: list[RoleQuota] | None = None,
         all_cards_lookup: dict[str, CardData] | None = None,
+        candidate_active_package_ids: frozenset[str] = frozenset(),
     ) -> GeneratedDeck:
         """Generate a 99-card main deck (+ commander = 100)."""
 
@@ -482,11 +511,15 @@ class DeckGenerator:
             card.model_copy(update={"package_ids": card_to_packages.get(card.oracle_id, [])})
             for card in pool_with_scores
         ]
-        # Bug H fix: start empty so owned_priority_adjustment cannot reach "active_package"
-        # for colorless cards before deck contents are known.  The correct active-package
-        # set is computed later at Step 5.5 after filler selection.
-        _active_package_ids: frozenset[str] = frozenset()
-        _package_core_ids: frozenset[str] = frozenset()
+        # SC-DECK-039b: initialize with candidate estimate so Step 4 can prefer package
+        # members before the deck contents are known.  Recomputed after Step 4 from
+        # actual selections (SC-DECK-039c).
+        _active_package_ids: frozenset[str] = candidate_active_package_ids
+        _package_core_ids: frozenset[str] = package_core_ids_for_deck(
+            [],
+            packages,
+            active_package_ids=candidate_active_package_ids,
+        )
 
         pool_with_scores, utility_land_warnings = _filter_irrelevant_utility_lands(
             pool_with_scores=pool_with_scores,
@@ -563,9 +596,9 @@ class DeckGenerator:
                 c for c in non_basics
                 if role_value in c.roles and c.oracle_id not in selected
             ]
-            # Sort by score desc, then oracle_id asc for determinism
-            eligible.sort(
-                key=lambda c: (
+
+            def _sort_key(c: DeckCard) -> tuple:
+                return (
                     -_selection_score(
                         c,
                         commander,
@@ -577,13 +610,46 @@ class DeckGenerator:
                     ),
                     c.oracle_id,
                 )
-            )
 
-            picks = eligible[:target]
+            floor_passing = [
+                c for c in eligible
+                if _meets_quality_floor(c, role_value, all_cards_lookup)
+            ]
+            if len(floor_passing) >= quota.target_min:
+                sorted_eligible = sorted(floor_passing, key=_sort_key)
+            else:
+                sorted_above = sorted(floor_passing, key=_sort_key)
+                below_floor = [
+                    c for c in eligible
+                    if not _meets_quality_floor(c, role_value, all_cards_lookup)
+                ]
+                sorted_below = sorted(below_floor, key=_sort_key)
+                sorted_eligible = sorted_above + sorted_below
+
+            picks = sorted_eligible[:target]
             for card in picks:
-                reason = f"fills {role_value} role"
+                is_fallback = not _meets_quality_floor(card, role_value, all_cards_lookup)
+                reason_suffix = ": weak placeholder" if is_fallback else ""
+                reason = f"fills {role_value} role{reason_suffix}"
                 main_deck.append(card.model_copy(update={"selection_reason": reason}))
                 selected.add(card.oracle_id)
+
+        # SC-DECK-039c: recompute active packages from actual Step 4 selections before
+        # Step 5/6 run so filler scoring uses the authoritative active-package set.
+        _active_package_ids = active_package_ids_for_deck(
+            main_deck,
+            packages,
+            primary_plan=primary_plan,
+            commander_supports_loose_value=_commander_supports_loose_value(
+                commander, primary_plan
+            ),
+            enforce_commander_relevance=enforce_package_relevance,
+        )
+        _package_core_ids = package_core_ids_for_deck(
+            main_deck,
+            packages,
+            active_package_ids=_active_package_ids,
+        )
 
         # Step 5: LAND selection
         land_target = land_quota.target_max

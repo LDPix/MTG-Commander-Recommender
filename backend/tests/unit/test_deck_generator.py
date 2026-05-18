@@ -11,6 +11,8 @@ from app.recommendation.deck_generator import (
     BASIC_LAND_NAMES,
     DeckGenerator,
     QUALITY_TIEBREAKER_WEIGHT,
+    ROLE_QUALITY_FLOORS,
+    _meets_quality_floor,
     _selection_score,
 )
 from app.recommendation.package_detector import PackageDetector
@@ -682,12 +684,16 @@ def _deck_card(
 
 
 def test_package_coherent_cards_receive_selection_preference() -> None:
-    """Equal-role candidates prefer the card with package-derived synergy."""
+    """Equal-role candidates prefer the card with package-derived synergy.
+
+    Uses SACRIFICE_OUTLET/ARISTOCRATS_SYNERGY which is a COMPLEMENTARY_ROLE_PAIR
+    under the new SC-GRAPH-005 edge rules (TOKEN_MAKER does not self-pair).
+    """
     commander = _test_commander()
-    package_ramp = _deck_card("pkg-ramp", "Package Ramp", ["RAMP", "TOKEN_MAKER"])
+    package_ramp = _deck_card("pkg-ramp", "Package Ramp", ["RAMP", "SACRIFICE_OUTLET"])
     generic_ramp = _deck_card("generic-ramp", "Generic Ramp", ["RAMP"])
     package_support = [
-        _deck_card(f"pkg-support-{i}", f"Package Support {i}", ["TOKEN_MAKER"])
+        _deck_card(f"pkg-support-{i}", f"Package Support {i}", ["ARISTOCRATS_SYNERGY"])
         for i in range(4)
     ]
     forest = _deck_card("forest-basic", "Forest", ["LAND"], is_owned=True)
@@ -2246,6 +2252,57 @@ def test_relevant_utility_land_included_when_synergy_threshold_met() -> None:
     )
 
     assert any(card.name == "Mystifying Maze" for card in deck.main_deck)
+
+
+def test_multicolor_fixing_land_not_filtered_as_low_relevance_utility() -> None:
+    commander = _multi_color_commander()
+    forest_data = CardData(
+        id="fixing-gate-forest",
+        oracle_id="fixing-gate-forest",
+        name="Forest",
+        color_identity=["G"],
+        legalities={"commander": "legal"},
+        type_line="Basic Land — Forest",
+        oracle_text="({T}: Add {G}.)",
+        cmc=0.0,
+    )
+    fixing_data = CardData(
+        id="fixing-gate-temple",
+        oracle_id="fixing-gate-temple",
+        name="Temple of the Dragon Queen",
+        color_identity=[],
+        legalities={"commander": "legal"},
+        type_line="Land",
+        oracle_text=(
+            "As this land enters, choose a color.\n"
+            "{T}: Add one mana of the chosen color."
+        ),
+        cmc=0.0,
+    )
+    pool = [
+        _deck_card(forest_data.oracle_id, forest_data.name, [CardRole.LAND.value], is_owned=True),
+        _deck_card(fixing_data.oracle_id, fixing_data.name, [CardRole.LAND.value]),
+    ]
+    graph = SynergyGraph()
+    graph.build(pool, {}, RoleTagSynergyProvider(), commander.oracle_id, commander.color_identity)
+
+    deck = DeckGenerator().generate(
+        commander=commander,
+        commander_tags=[],
+        candidate_pool=pool,
+        role_tags={},
+        graph=graph,
+        packages=[],
+        session_id="fixing-land-utility-gate",
+        quotas=[RoleQuota(CardRole.LAND, 1, 1)],
+        all_cards_lookup={
+            forest_data.oracle_id: forest_data,
+            fixing_data.oracle_id: fixing_data,
+        },
+    )
+
+    assert any(card.name == "Temple of the Dragon Queen" for card in deck.main_deck)
+    assert not any("Temple of the Dragon Queen" in warning for warning in deck.warnings)
 
 
 def test_utility_land_exclusion_visible_in_score_log() -> None:
@@ -3884,3 +3941,207 @@ def test_selection_score_zero_quality_unchanged() -> None:
         frozenset(),
         all_cards_lookup={},
     ) == pytest.approx(0.3)
+
+
+# ---------------------------------------------------------------------------
+# SC-DECK-040: role quality floors
+# ---------------------------------------------------------------------------
+
+def _card_data_for_quality(oracle_id: str, edhrec_rank: int, cmc: float = 3.0, oracle_text: str = "") -> CardData:
+    return CardData(
+        id=oracle_id,
+        oracle_id=oracle_id,
+        name=oracle_id,
+        type_line="Sorcery",
+        edhrec_rank=edhrec_rank,
+        cmc=cmc,
+        oracle_text=oracle_text,
+        color_identity=["G"],
+        legalities={"commander": "legal"},
+    )
+
+
+def test_weak_card_excluded_from_quota_fill_when_better_alternative_exists() -> None:
+    """Below-floor RAMP card is not selected when an above-floor alternative exists."""
+    commander = _test_commander()
+    # card_A: edhrec_rank=10000 → quality ≈ 0.06 (below RAMP floor=0.35)
+    card_a = _deck_card("weak-ramp", "Weak Ramp", [CardRole.RAMP.value])
+    # card_B: edhrec_rank=5 → quality ≈ 0.54 (above RAMP floor=0.35)
+    card_b = _deck_card("strong-ramp", "Strong Ramp", [CardRole.RAMP.value])
+    forest = _deck_card("forest-qf", "Forest", [CardRole.LAND.value], is_owned=True)
+
+    all_cards_lookup = {
+        "weak-ramp": _card_data_for_quality("weak-ramp", edhrec_rank=10000, cmc=3),
+        "strong-ramp": _card_data_for_quality("strong-ramp", edhrec_rank=5, cmc=2),
+    }
+
+    deck = DeckGenerator().generate(
+        commander=commander,
+        commander_tags=[],
+        candidate_pool=[card_a, card_b, forest],
+        role_tags={},
+        graph=SynergyGraph(),
+        packages=[],
+        session_id="quality-floor-test",
+        quotas=[
+            RoleQuota(CardRole.RAMP, target_min=1, target_max=1),
+            RoleQuota(CardRole.LAND, target_min=98, target_max=98),
+        ],
+        all_cards_lookup=all_cards_lookup,
+    )
+
+    selected_ids = {c.oracle_id for c in deck.main_deck}
+    assert "strong-ramp" in selected_ids
+    assert "weak-ramp" not in selected_ids
+
+
+def test_below_floor_card_used_as_fallback_when_no_alternatives() -> None:
+    """When only below-floor RAMP cards exist, they are still selected (with 'weak placeholder' label)."""
+    commander = _test_commander()
+    weak_ramp = _deck_card("weak-only-ramp", "Weak Only Ramp", [CardRole.RAMP.value])
+    forest = _deck_card("forest-fallback", "Forest", [CardRole.LAND.value], is_owned=True)
+
+    all_cards_lookup = {
+        "weak-only-ramp": _card_data_for_quality("weak-only-ramp", edhrec_rank=10000, cmc=3),
+    }
+
+    deck = DeckGenerator().generate(
+        commander=commander,
+        commander_tags=[],
+        candidate_pool=[weak_ramp, forest],
+        role_tags={},
+        graph=SynergyGraph(),
+        packages=[],
+        session_id="quality-fallback-test",
+        quotas=[
+            RoleQuota(CardRole.RAMP, target_min=1, target_max=1),
+            RoleQuota(CardRole.LAND, target_min=98, target_max=98),
+        ],
+        all_cards_lookup=all_cards_lookup,
+    )
+
+    ramp_cards = [c for c in deck.main_deck if CardRole.RAMP.value in c.roles]
+    assert len(ramp_cards) == 1
+    assert "weak placeholder" in ramp_cards[0].selection_reason
+
+
+def test_floor_not_applied_to_unknown_quality_card() -> None:
+    """Card absent from all_cards_lookup passes the floor check regardless."""
+    card = DeckCard(
+        oracle_id="unknown-card",
+        name="Unknown",
+        is_owned=True,
+        quantity=1,
+        roles=[CardRole.RAMP.value],
+        selection_reason="test",
+    )
+    assert _meets_quality_floor(card, CardRole.RAMP.value, all_cards_lookup={}) is True
+    assert _meets_quality_floor(card, CardRole.RAMP.value, all_cards_lookup=None) is True
+
+
+def test_credit_pass_allows_below_quality_floor_card() -> None:
+    """Card with quality below floor but role_quality_credit >= 0.75 passes the floor check."""
+    card = DeckCard(
+        oracle_id="repeatable-ramp",
+        name="Repeatable Ramp",
+        is_owned=True,
+        quantity=1,
+        roles=[CardRole.RAMP.value],
+        selection_reason="test",
+    )
+    # edhrec_rank=10000 → quality ≈ 0.06 (below RAMP floor=0.35)
+    # oracle_text with "whenever" → ramp_credit = 1.0 (repeatable) >= 0.75
+    card_data = _card_data_for_quality(
+        "repeatable-ramp",
+        edhrec_rank=10000,
+        cmc=3,
+        oracle_text="Whenever a land enters the battlefield under your control, add {G}.",
+    )
+    assert _meets_quality_floor(
+        card, CardRole.RAMP.value, all_cards_lookup={"repeatable-ramp": card_data}
+    ) is True
+
+
+# =========================================================================
+# SC-DECK-039: Plan-first deck generation — candidate_active_package_ids
+# =========================================================================
+
+def test_candidate_active_packages_boosts_package_card_selection() -> None:
+    """SC-DECK-039b: owned package member is selected when candidate_active_package_ids is set.
+
+    Card A: owned, in candidate-active package.
+    Card B: not owned, not in package.
+    Both have equal synergy score (0.0 from graph with no role edges).
+    Card A wins because owned bonus (0.3) > no owned bonus (0.0).
+    """
+    commander = _test_commander()
+
+    pkg_members = [
+        _deck_card(f"pkg-mem-{i}", f"Member {i}", ["ARISTOCRATS_SYNERGY"], is_owned=True)
+        for i in range(5)
+    ]
+    pkg_ramp = _deck_card("pkg-ramp", "Package Ramp", ["RAMP"], is_owned=True)
+    generic_ramp = _deck_card("generic-ramp", "Generic Ramp", ["RAMP"], is_owned=False)
+    forest = _deck_card("forest-basic", "Forest", ["LAND"], is_owned=True)
+
+    pool = [*pkg_members, pkg_ramp, generic_ramp, forest]
+    role_tags: dict[str, list[RoleTag]] = {card.oracle_id: [] for card in pool}
+    graph = SynergyGraph()
+    graph.build(pool, role_tags, RoleTagSynergyProvider(), commander.oracle_id, commander.color_identity)
+
+    package = PackageCluster(
+        package_id="pkg-001",
+        label="aristocrats package",
+        confidence=0.9,
+        card_oracle_ids=["pkg-ramp"] + [f"pkg-mem-{i}" for i in range(5)],
+        top_roles=["ARISTOCRATS_SYNERGY"],
+    )
+
+    deck = DeckGenerator().generate(
+        commander=commander,
+        commander_tags=[],
+        candidate_pool=pool,
+        role_tags=role_tags,
+        graph=graph,
+        packages=[package],
+        session_id="pkg-boost-test",
+        quotas=[
+            RoleQuota(CardRole.RAMP, target_min=1, target_max=1),
+            RoleQuota(CardRole.LAND, target_min=98, target_max=98),
+        ],
+        candidate_active_package_ids=frozenset({"pkg-001"}),
+    )
+
+    ramp_selected = {c.oracle_id for c in deck.main_deck if CardRole.RAMP.value in c.roles}
+    assert "pkg-ramp" in ramp_selected, "Owned package member should win over unowned non-package card"
+    assert "generic-ramp" not in ramp_selected
+
+
+def test_empty_candidate_packages_gives_same_result_as_no_packages() -> None:
+    """SC-DECK-039b: candidate_active_package_ids=frozenset() is backward-compatible."""
+    commander = _test_commander()
+    ramp = _deck_card("ramp-card", "Ramp Card", ["RAMP"])
+    forest = _deck_card("forest-basic", "Forest", ["LAND"], is_owned=True)
+    pool = [ramp, forest]
+    role_tags: dict[str, list[RoleTag]] = {card.oracle_id: [] for card in pool}
+    graph = SynergyGraph()
+    graph.build(pool, role_tags, RoleTagSynergyProvider(), commander.oracle_id, commander.color_identity)
+
+    quotas = [
+        RoleQuota(CardRole.RAMP, target_min=1, target_max=1),
+        RoleQuota(CardRole.LAND, target_min=98, target_max=98),
+    ]
+
+    deck_no_arg = DeckGenerator().generate(
+        commander=commander, commander_tags=[], candidate_pool=pool, role_tags=role_tags,
+        graph=graph, packages=[], session_id="compat-test-1", quotas=quotas,
+    )
+    deck_empty_arg = DeckGenerator().generate(
+        commander=commander, commander_tags=[], candidate_pool=pool, role_tags=role_tags,
+        graph=graph, packages=[], session_id="compat-test-2", quotas=quotas,
+        candidate_active_package_ids=frozenset(),
+    )
+
+    ids_no_arg = sorted(c.oracle_id for c in deck_no_arg.main_deck)
+    ids_empty_arg = sorted(c.oracle_id for c in deck_empty_arg.main_deck)
+    assert ids_no_arg == ids_empty_arg

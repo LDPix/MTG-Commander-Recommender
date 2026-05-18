@@ -12,9 +12,21 @@ UTILITY_LAND_MIN_SYNERGY_SCORE: float = 0.35
 # Lands whose primary purpose is color diversification.
 # Excluded from mono-color decks because they provide no functional value there.
 KNOWN_FIXING_LAND_NAMES: frozenset[str] = frozenset({
+    "Adarkar Wastes",
+    "Battlefield Forge",
+    "Brushland",
+    "Caves of Koilos",
+    "Llanowar Wastes",
+    "Shivan Reef",
+    "Sulfurous Springs",
+    "Karplusan Forest",
+    "Underground River",
+    "Yavimaya Coast",
+    "Command Tower",
     "Gemstone Mine",
     "Exotic Orchard",
     "Shimmerdrift Vale",
+    "Temple of the Dragon Queen",
     "Riveteers Overlook",
     "Capital City",
     "Unclaimed Territory",
@@ -89,6 +101,62 @@ def is_fixing_land(
     return False
 
 
+def is_primary_fixing_land(
+    card_name: str,
+    oracle_text: str | None,
+    type_line: str,
+    commander_color_identity: list[str] | None = None,
+) -> bool:
+    """Return True for lands whose main deckbuilding job is color fixing."""
+    if "Land" not in type_line or is_basic_land_type_line(type_line):
+        return False
+    if card_name in KNOWN_UTILITY_LAND_NAMES:
+        return False
+    if card_name in KNOWN_FIXING_LAND_NAMES:
+        return True
+
+    text = (oracle_text or "").lower()
+    if not text:
+        return False
+
+    fixing_markers = (
+        "commander's color identity",
+        "add one mana of any color",
+        "add mana of any color",
+        "add one mana of any type",
+        "mana of any one color",
+        "mana of any color",
+        "color of your choice",
+        "chosen color",
+        "chosen type",
+    )
+    if any(marker in text for marker in fixing_markers):
+        return True
+
+    # Fetch-style lands: the search text is mana-base fixing, not utility text.
+    if "search your library" in text and "land card" in text:
+        return True
+    if "search your library" in text and any(
+        land_type.lower() in text for land_type in ("Plains", "Island", "Swamp", "Mountain", "Forest")
+    ):
+        return True
+
+    # Pain/check/filter/dual-style lands often spell out two or more colored symbols.
+    produced_colors = {
+        color for symbol, color in _COLOR_SYMBOLS.items() if symbol.lower() in text
+    }
+    if len(produced_colors) >= 2:
+        return True
+
+    if commander_color_identity is not None and len(commander_color_identity) > 1:
+        commander_colors = set(commander_color_identity)
+        on_identity_colors = produced_colors.intersection(commander_colors)
+        if len(on_identity_colors) >= 2:
+            return True
+
+    return False
+
+
 def is_c_only_land(card_name: str, oracle_text: str | None) -> bool:
     """Return True if this land produces only {C} (colorless) mana.
 
@@ -111,6 +179,9 @@ def is_utility_land(
 ) -> bool:
     """Return True for non-basic lands with non-mana strategic text."""
     if "Land" not in type_line or is_basic_land_type_line(type_line):
+        return False
+
+    if is_primary_fixing_land(card_name, oracle_text, type_line):
         return False
 
     if card_name in KNOWN_UTILITY_LAND_NAMES:
@@ -158,6 +229,9 @@ def utility_land_has_relevance(
     active_package_ids: set[str],
 ) -> bool:
     """Return True when a utility land has enough deck relevance to keep."""
+    if is_primary_fixing_land(card_name, oracle_text, type_line):
+        return True
+
     if not is_utility_land(card_name, oracle_text, type_line):
         return True
 

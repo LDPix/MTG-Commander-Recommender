@@ -218,46 +218,60 @@ def test_candidate_pool_is_deduplicated(candidate_pool: list[DeckCard]) -> None:
     assert len(oracle_ids) == len(set(oracle_ids))
 
 
-def test_candidate_pool_owned_cards_come_first(meren: CardData, sample_cards: list[CardData], role_tags_for_all: dict[str, list[RoleTag]], cards_by_name: dict[str, CardData]) -> None:
-    """Owned cards appear before unowned cards in the sorted pool."""
-    sol_ring = cards_by_name["Sol Ring"]
-    forest = cards_by_name["Forest"]
-    owned_ids = {sol_ring.oracle_id, forest.oracle_id}
+def test_owned_cards_sort_before_unowned_within_role_bucket() -> None:
+    """SC-DECK-042: within each role bucket (no quality data), owned cards sort before unowned."""
+    commander = _basic_test_card("cmd-g-order", "Order Commander", ["G"], "Legendary Creature — Elf")
+
+    owned_ramp = _basic_test_card("owned-ramp", "Owned Ramp", ["G"], "Sorcery")
+    unowned_ramp = _basic_test_card("unowned-ramp", "Unowned Ramp", ["G"], "Sorcery")
+
+    role_tags = {
+        owned_ramp.oracle_id: [RoleTag(CardRole.RAMP, 1.0, "rule_based")],
+        unowned_ramp.oracle_id: [RoleTag(CardRole.RAMP, 1.0, "rule_based")],
+    }
 
     pool = DeckCandidatePool().build(
-        commander=meren,
-        owned_cards=[sol_ring, forest],
-        all_cards=sample_cards,
-        role_tags=role_tags_for_all,
-        owned_oracle_ids=owned_ids,
+        commander=commander,
+        owned_cards=[owned_ramp],
+        all_cards=[commander, owned_ramp, unowned_ramp],
+        role_tags=role_tags,
+        owned_oracle_ids={owned_ramp.oracle_id},
     )
 
-    # Find the last owned card position and first unowned card position
-    last_owned_idx = -1
-    first_unowned_idx = len(pool)
-    for i, card in enumerate(pool):
-        if card.is_owned:
-            last_owned_idx = i
-        else:
-            if i < first_unowned_idx:
-                first_unowned_idx = i
-
-    # All owned come before all unowned (if there are both)
-    if last_owned_idx >= 0 and first_unowned_idx < len(pool):
-        assert last_owned_idx < first_unowned_idx
+    ramp_cards = [c for c in pool if CardRole.RAMP.value in c.roles]
+    # owned card should appear before unowned (no quality data → owned_bonus wins)
+    owned_positions = [i for i, c in enumerate(ramp_cards) if c.is_owned]
+    unowned_positions = [i for i, c in enumerate(ramp_cards) if not c.is_owned]
+    if owned_positions and unowned_positions:
+        assert max(owned_positions) < min(unowned_positions)
 
 
-def test_candidate_pool_respects_max_pool_size(meren: CardData, sample_cards: list[CardData], role_tags_for_all: dict[str, list[RoleTag]]) -> None:
-    """Pool is capped at max_pool_size."""
+def test_per_role_cap_limits_cards_per_role() -> None:
+    """SC-DECK-042: at most _PER_ROLE_CAP cards per non-land role appear in the pool."""
+    from app.recommendation.deck_candidate_pool import _PER_ROLE_CAP
+
+    commander = _basic_test_card("cmd-g-cap", "Cap Commander", ["G"], "Legendary Creature — Elf")
+
+    # 200 RAMP cards — far more than _PER_ROLE_CAP (80)
+    ramp_cards = [
+        _basic_test_card(f"ramp-{i:03d}", f"Ramp Card {i}", ["G"], "Sorcery")
+        for i in range(200)
+    ]
+    ramp_role_tags = {
+        card.oracle_id: [RoleTag(CardRole.RAMP, 1.0, "rule_based")]
+        for card in ramp_cards
+    }
+
     pool = DeckCandidatePool().build(
-        commander=meren,
+        commander=commander,
         owned_cards=[],
-        all_cards=sample_cards,
-        role_tags=role_tags_for_all,
+        all_cards=[commander, *ramp_cards],
+        role_tags=ramp_role_tags,
         owned_oracle_ids=set(),
-        max_pool_size=10,
     )
-    assert len(pool) <= 10
+
+    ramp_in_pool = [c for c in pool if CardRole.RAMP.value in c.roles]
+    assert len(ramp_in_pool) <= _PER_ROLE_CAP
 
 
 # ---------------------------------------------------------------------------
@@ -643,3 +657,97 @@ def test_basic_land_not_in_upgrade_suggestions() -> None:
 
     suggested_names = {s.name for s in suggestions}
     assert "Forest" not in suggested_names, "Virtual-owned Forest must not appear in upgrade suggestions"
+
+
+# ---------------------------------------------------------------------------
+# SC-DECK-042: Quality-aware per-role pool capping
+# ---------------------------------------------------------------------------
+
+def test_high_quality_unowned_card_included_over_low_quality_owned() -> None:
+    """High-quality unowned RAMP cards beat low-quality owned RAMP cards when bucket is full."""
+    from app.recommendation.deck_candidate_pool import _PER_ROLE_CAP
+
+    commander = _basic_test_card("cmd-g-hq", "HQ Commander", ["G"], "Legendary Creature — Elf")
+
+    # _PER_ROLE_CAP + 10 owned RAMP cards with no edhrec_rank (quality ≈ 0.20 + 0.0)
+    low_quality_owned = [
+        _basic_test_card(f"lo-own-{i:03d}", f"Low Owned {i}", ["G"], "Sorcery")
+        for i in range(_PER_ROLE_CAP + 10)
+    ]
+    # 10 unowned RAMP cards with edhrec_rank=1 (highest quality)
+    high_quality_unowned = []
+    for i in range(10):
+        card = _basic_test_card(f"hi-unown-{i:02d}", f"High Unowned {i}", ["G"], "Sorcery")
+        card.edhrec_rank = 1  # near-perfect quality score
+        high_quality_unowned.append(card)
+
+    all_ramp = low_quality_owned + high_quality_unowned
+    owned_ids = {c.oracle_id for c in low_quality_owned}
+    ramp_role_tags = {
+        card.oracle_id: [RoleTag(CardRole.RAMP, 1.0, "rule_based")]
+        for card in all_ramp
+    }
+    all_cards_lookup = {c.oracle_id: c for c in all_ramp + [commander]}
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=low_quality_owned,
+        all_cards=[commander, *all_ramp],
+        role_tags=ramp_role_tags,
+        owned_oracle_ids=owned_ids,
+        all_cards_lookup=all_cards_lookup,
+    )
+
+    pool_ids = {c.oracle_id for c in pool}
+    # All 10 high-quality unowned cards must be in the pool
+    for card in high_quality_unowned:
+        assert card.oracle_id in pool_ids, f"{card.name} should be in pool (high quality)"
+
+
+def test_land_bucket_uses_land_cap() -> None:
+    """SC-DECK-042: land role bucket uses _LAND_CAP (120), not _PER_ROLE_CAP (80)."""
+    from app.recommendation.deck_candidate_pool import _LAND_CAP
+
+    commander = _basic_test_card("cmd-g-land", "Land Commander", ["G"], "Legendary Creature — Elf")
+    land_cards = [
+        _basic_test_card(f"land-{i:03d}", f"Land {i}", ["G"], "Land")
+        for i in range(150)
+    ]
+    land_role_tags = {
+        card.oracle_id: [RoleTag(CardRole.LAND, 1.0, "rule_based")]
+        for card in land_cards
+    }
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, *land_cards],
+        role_tags=land_role_tags,
+        owned_oracle_ids=set(),
+    )
+
+    land_in_pool = [c for c in pool if CardRole.LAND.value in c.roles]
+    assert len(land_in_pool) <= _LAND_CAP
+
+
+def test_roleless_cards_in_fallback_bucket() -> None:
+    """SC-DECK-042: cards with no roles go into fallback bucket capped at _FALLBACK_CAP."""
+    from app.recommendation.deck_candidate_pool import _FALLBACK_CAP, CANONICAL_BASIC_LAND_NAMES
+
+    commander = _basic_test_card("cmd-g-fb", "Fallback Commander", ["G"], "Legendary Creature — Elf")
+    roleless_cards = [
+        _basic_test_card(f"roleless-{i:03d}", f"Roleless Card {i}", ["G"], "Creature")
+        for i in range(200)
+    ]
+
+    pool = DeckCandidatePool().build(
+        commander=commander,
+        owned_cards=[],
+        all_cards=[commander, *roleless_cards],
+        role_tags={},  # no roles → all go to fallback bucket
+        owned_oracle_ids=set(),
+    )
+
+    # Pool should have at most _FALLBACK_CAP cards (plus any free basics injected)
+    non_basic = [c for c in pool if c.name not in CANONICAL_BASIC_LAND_NAMES]
+    assert len(non_basic) <= _FALLBACK_CAP

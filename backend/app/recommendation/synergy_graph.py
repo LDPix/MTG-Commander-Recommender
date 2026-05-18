@@ -8,7 +8,7 @@ from app.models.deck import DeckCard, SynergyEdge
 from app.recommendation.role_taxonomy import CardRole, RoleTag
 
 
-# Roles that are "specific" (not generic) — used for edge weight calculation
+# Roles that are "specific" (not generic) — kept for backward compatibility
 SPECIFIC_ROLES: frozenset[CardRole] = frozenset({
     CardRole.ARISTOCRATS_SYNERGY,
     CardRole.LANDFALL_SYNERGY,
@@ -18,6 +18,22 @@ SPECIFIC_ROLES: frozenset[CardRole] = frozenset({
     CardRole.RECURSION,
     CardRole.SACRIFICE_OUTLET,
     CardRole.TOKEN_MAKER,
+})
+
+COMPLEMENTARY_ROLE_PAIRS: list[tuple[str, str]] = [
+    ("TOKEN_MAKER", "SACRIFICE_OUTLET"),
+    ("TOKEN_MAKER", "ARISTOCRATS_SYNERGY"),
+    ("SACRIFICE_OUTLET", "ARISTOCRATS_SYNERGY"),
+    ("RECURSION", "SACRIFICE_OUTLET"),
+    ("BLINK_SYNERGY", "BLINK_SYNERGY"),
+    ("LANDFALL_SYNERGY", "RAMP"),
+    ("SPELLSLINGER_SYNERGY", "CARD_DRAW"),
+]
+
+_DENSITY_BENEFIT_ROLES: frozenset[str] = frozenset({
+    "BLINK_SYNERGY",
+    "LANDFALL_SYNERGY",
+    "SPELLSLINGER_SYNERGY",
 })
 
 
@@ -82,30 +98,40 @@ class SynergyGraph:
         # Step 1: Get provider edges
         provider_edges = provider.get_edges(commander_oracle_id, color_identity)
 
-        # Step 2: Compute role-tag edges
-        # Build mapping: oracle_id -> set of specific roles
-        specific_role_map: dict[str, set[CardRole]] = {}
-        for card in candidate_cards:
-            card_specific_roles: set[CardRole] = set()
-            for tag in role_tags.get(card.oracle_id, []):
-                if tag.role in SPECIFIC_ROLES:
-                    card_specific_roles.add(tag.role)
-            if card_specific_roles:
-                specific_role_map[card.oracle_id] = card_specific_roles
-
+        # Step 2: Compute role-tag edges via complementary role pairs
         role_edges: list[SynergyEdge] = []
-        specific_cards = sorted(specific_role_map.keys())  # deterministic order
-        num_specific_roles = len(SPECIFIC_ROLES)
+        sorted_cards = sorted(candidate_cards, key=lambda c: c.oracle_id)  # deterministic
+        num_pairs = len(COMPLEMENTARY_ROLE_PAIRS)
 
-        for i, id_a in enumerate(specific_cards):
-            for id_b in specific_cards[i + 1:]:
-                shared = specific_role_map[id_a] & specific_role_map[id_b]
-                if shared:
-                    weight = min(1.0, len(shared) / num_specific_roles)
+        for i, card_a in enumerate(sorted_cards):
+            roles_a = set(card_a.roles)
+            if not roles_a:
+                continue
+            for card_b in sorted_cards[i + 1:]:
+                roles_b = set(card_b.roles)
+                if not roles_b:
+                    continue
+
+                num_matching = 0
+                for role_x, role_y in COMPLEMENTARY_ROLE_PAIRS:
+                    if role_x == role_y:
+                        if role_x in roles_a and role_x in roles_b:
+                            num_matching += 1
+                    else:
+                        if (role_x in roles_a and role_y in roles_b) or \
+                           (role_y in roles_a and role_x in roles_b):
+                            num_matching += 1
+
+                if num_matching == 0:
+                    shared_density = roles_a & roles_b & _DENSITY_BENEFIT_ROLES
+                    num_matching += len(shared_density)
+
+                if num_matching > 0:
+                    weight = min(1.0, num_matching / num_pairs)
                     role_edges.append(
                         SynergyEdge(
-                            card_a_oracle_id=id_a,
-                            card_b_oracle_id=id_b,
+                            card_a_oracle_id=card_a.oracle_id,
+                            card_b_oracle_id=card_b.oracle_id,
                             weight=weight,
                             metric="role_tag",
                             sample_size=0,

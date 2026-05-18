@@ -13,7 +13,9 @@ from app.recommendation.package_density import (
     package_activation_status,
     package_core_ids_for_deck,
     package_density_threshold,
+    package_has_viable_composition,
     package_is_loose_value,
+    package_meets_component_template,
     package_repair_status,
     packages_with_activation_status,
 )
@@ -396,3 +398,54 @@ def test_package_breakdown_exposes_core_vs_raw_counts() -> None:
     assert status_pkg.selected_count == 2
     assert status_pkg.raw_selected_count == 4
     assert status_pkg.activation_status == "underfilled"
+
+
+# ---------------------------------------------------------------------------
+# SC-GRAPH-005: package_meets_component_template
+# ---------------------------------------------------------------------------
+
+def test_token_package_requires_sacrifice_outlet_to_activate() -> None:
+    pkg = _pkg("token-engine", "TOKEN_MAKER", [f"tm-{i}" for i in range(8)])
+    deck = [
+        _card(f"tm-{i}", ["TOKEN_MAKER"], package_ids=["token-engine"])
+        for i in range(8)
+    ]
+    assert package_meets_component_template(deck, pkg) is False
+    status = package_activation_status(
+        deck,
+        pkg,
+        primary_plan="tokens",
+        enforce_commander_relevance=True,
+    )
+    assert status == PACKAGE_STATUS_INACTIVE_BAD_COMPOSITION
+
+
+def test_aristocrats_package_requires_payoff_and_outlet() -> None:
+    pkg = _pkg("aristocrats-engine", "ARISTOCRATS_SYNERGY", [f"so-{i}" for i in range(4)])
+    deck = [
+        _card(f"so-{i}", ["SACRIFICE_OUTLET"], package_ids=["aristocrats-engine"])
+        for i in range(4)
+    ]
+    assert package_meets_component_template(deck, pkg) is False
+
+
+def test_package_template_satisfied_when_components_present() -> None:
+    pkg = _pkg("token-engine", "TOKEN_MAKER", ["tm1", "tm2", "tm3", "so1"])
+    deck = [
+        _card("tm1", ["TOKEN_MAKER"], package_ids=["token-engine"]),
+        _card("tm2", ["TOKEN_MAKER"], package_ids=["token-engine"]),
+        _card("tm3", ["TOKEN_MAKER"], package_ids=["token-engine"]),
+        _card("so1", ["SACRIFICE_OUTLET"], package_ids=["token-engine"]),
+    ]
+    assert package_meets_component_template(deck, pkg) is True
+
+
+def test_package_has_viable_composition_alias_works() -> None:
+    pkg = _pkg("token-engine", "TOKEN_MAKER", ["tm1", "tm2", "tm3", "so1"])
+    deck = [
+        _card("tm1", ["TOKEN_MAKER"], package_ids=["token-engine"]),
+        _card("tm2", ["TOKEN_MAKER"], package_ids=["token-engine"]),
+        _card("tm3", ["TOKEN_MAKER"], package_ids=["token-engine"]),
+        _card("so1", ["SACRIFICE_OUTLET"], package_ids=["token-engine"]),
+    ]
+    assert package_has_viable_composition(deck, pkg) == package_meets_component_template(deck, pkg)

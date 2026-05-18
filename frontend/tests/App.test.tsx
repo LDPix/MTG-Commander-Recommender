@@ -135,8 +135,10 @@ const deck: GeneratedDeckResponse = {
     on_plan_count: 12,
     off_plan_count: 3,
     warning_card_oracle_ids: ["skullclamp", "sol-ring"],
-    warnings: []
+    warnings: [],
+    confidence_cap_reasons: []
   },
+  repair_blockers: [],
   upgrade_suggestions: [
     {
       oracle_id: "viscera-seer",
@@ -243,7 +245,8 @@ const savedDeckDetail: SavedDeckDetail = {
     validation_errors: [],
     strategic_coherence: null,
     upgrade_suggestions: [],
-    card_explanations: {}
+    card_explanations: {},
+    repair_blockers: []
   }
 };
 
@@ -727,7 +730,8 @@ function lowCoherenceDeck(): GeneratedDeckResponse {
       on_plan_count: 1,
       off_plan_count: 14,
       warning_card_oracle_ids: ["skullclamp", "sol-ring", "viscera-seer"],
-      warnings: [warning]
+      warnings: [warning],
+      confidence_cap_reasons: ["unresolved_warning_cards"]
     }
   };
 }

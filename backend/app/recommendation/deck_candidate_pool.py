@@ -1,15 +1,18 @@
 """SC-DECK-001: Build the legal candidate card pool for deck generation."""
 from __future__ import annotations
 
+from collections import defaultdict
+
 from app.models.card import CardData
 from app.models.deck import DeckCard
+from app.recommendation.card_quality_scorer import compute_quality_score
 from app.recommendation.mana_base_rules import (
     commander_is_colorless,
     is_c_only_land,
     is_fixing_land,
     is_mono_color,
 )
-from app.recommendation.role_taxonomy import RoleTag
+from app.recommendation.role_taxonomy import CardRole, RoleTag
 
 
 COLOR_TO_BASIC_LAND: dict[str, str] = {
@@ -26,6 +29,23 @@ COLOR_TO_BASIC_LAND: dict[str, str] = {
 CANONICAL_BASIC_LAND_NAMES: frozenset[str] = frozenset({
     "Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
 })
+
+# SC-DECK-042: per-role quality-aware pool caps
+_PER_ROLE_CAP = 80
+_LAND_CAP = 120
+_FALLBACK_CAP = 120
+
+
+def _pool_quality_key(
+    card: DeckCard,
+    all_cards_lookup: dict[str, CardData] | None,
+) -> float:
+    """Sort key: owned bonus + quality score. No synergy (graph not built yet)."""
+    owned_bonus = 0.20 if card.is_owned else 0.0
+    card_data = all_cards_lookup.get(card.oracle_id) if all_cards_lookup else None
+    role = card.roles[0] if card.roles else ""
+    quality = compute_quality_score(card_data, role) if card_data else 0.0
+    return owned_bonus + quality
 
 
 def _land_is_eligible(
@@ -58,6 +78,7 @@ class DeckCandidatePool:
         role_tags: dict[str, list[RoleTag]],
         owned_oracle_ids: set[str],
         max_pool_size: int = 600,
+        all_cards_lookup: dict[str, CardData] | None = None,
     ) -> list[DeckCard]:
         """Build sorted candidate pool of DeckCard objects.
 
@@ -122,12 +143,35 @@ class DeckCandidatePool:
             else:
                 unowned_pool.append(deck_card)
 
-        # Sort deterministically within each group
-        owned_pool.sort(key=lambda c: c.oracle_id)
-        unowned_pool.sort(key=lambda c: c.oracle_id)
+        # SC-DECK-042: per-role quality cap (replaces alphabetical 600-card cap)
+        full_pool = owned_pool + unowned_pool
 
-        combined = owned_pool + unowned_pool
-        capped = combined[:max_pool_size]
+        role_buckets: dict[str, list[DeckCard]] = defaultdict(list)
+        for card in full_pool:
+            primary = card.roles[0] if card.roles else ""
+            role_buckets[primary].append(card)
+
+        capped: list[DeckCard] = []
+        seen_in_cap: set[str] = set()
+
+        for role, cards in role_buckets.items():
+            if role == "":
+                continue
+            limit = _LAND_CAP if role == CardRole.LAND.value else _PER_ROLE_CAP
+            cards.sort(key=lambda c: -_pool_quality_key(c, all_cards_lookup))
+            for card in cards[:limit]:
+                if card.oracle_id not in seen_in_cap:
+                    capped.append(card)
+                    seen_in_cap.add(card.oracle_id)
+
+        for card in sorted(
+            role_buckets.get("", []),
+            key=lambda c: -_pool_quality_key(c, all_cards_lookup),
+        )[:_FALLBACK_CAP]:
+            if card.oracle_id not in seen_in_cap:
+                capped.append(card)
+                seen_in_cap.add(card.oracle_id)
+
         return capped + _free_basic_lands_for_missing_colors(
             commander_color_identity=commander.color_identity,
             current_pool=capped,

@@ -130,7 +130,11 @@
       "Bash(uvicorn backend.app.main:app --port 8001 --log-level error)",
       "Bash(curl -s -X POST \"http://localhost:8001/api/v1/collections/upload\")",
       "Bash(find /tmp /var/tmp ~/Downloads -name \"moxfield*.csv\" 2>/dev/null | head -5 && find /Users/nikitafadeev -name \"moxfield*.csv\" -not -path \"*/node_modules/*\" 2>/dev/null | head -5)",
-      "Read(//private/var/tmp/**)"
+      "Read(//private/var/tmp/**)",
+      "Bash(git -C /Users/nikitafadeev/Documents/MTG-Commander-Recommender diff --stat HEAD)",
+      "Bash(python -m py_compile app/recommendation/deck_generator.py app/recommendation/strategic_coherence.py app/recommendation/package_density.py app/services/deck_generation_service.py)",
+      "Bash(python -m pytest tests/unit/test_deck_generation_service.py::test_credit_repair_makes_multiple_swaps_when_needed tests/unit/test_deck_generation_service.py::test_credit_repair_stops_when_credit_satisfied tests/unit/test_deck_generation_service.py::test_credit_repair_stops_when_pool_exhausted tests/unit/test_deck_generation_service.py::test_credit_repair_inner_cap_prevents_infinite_loop -v)",
+      "Bash(python -m pytest tests/unit/test_deck_generator.py::test_candidate_active_packages_boosts_package_card_selection tests/unit/test_deck_generator.py::test_empty_candidate_packages_gives_same_result_as_no_packages tests/unit/test_deck_generation_service.py::test_estimate_excludes_irrelevant_packages tests/unit/test_deck_generation_service.py::test_estimate_excludes_underfilled_packages tests/unit/test_deck_generation_service.py::test_estimate_includes_all_plans_when_primary_plan_is_none -v)"
     ],
     "additionalDirectories": [
       "/Users/nikitafadeev/Documents/MTG-Commander-Recommender/backend/app/db",

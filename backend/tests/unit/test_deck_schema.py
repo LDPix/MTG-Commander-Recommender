@@ -13,6 +13,7 @@ from app.schemas.deck_schema import (
     GeneratedDeckResponse,
     PackageSchema,
     QuotaStatusSchema,
+    RepairBlockerSchema,
     UpgradeSuggestionSchema,
 )
 
@@ -95,6 +96,23 @@ class TestGeneratedDeckResponse:
         assert len(response.main_deck) == 99
         assert response.is_valid is True
         assert response.role_breakdown["LAND"] == 37
+
+    def test_quota_status_exposes_effective_satisfaction_metadata(self):
+        status = QuotaStatusSchema(
+            role="RAMP",
+            target_min=8,
+            target_max=10,
+            actual_count=7,
+            is_satisfied=False,
+            warning="RAMP: need 8-10, got 7 assigned slot(s) (underfilled)",
+            credit_sum=8.25,
+            credit_satisfied=True,
+            effective_satisfied=True,
+            count_credit_covered=True,
+        )
+
+        assert status.effective_satisfied is True
+        assert status.count_credit_covered is True
 
     def test_generated_deck_response_allows_warnings(self):
         main_deck = [self._make_card(f"oid-{i}", f"Card {i}") for i in range(99)]
@@ -186,6 +204,45 @@ class TestGeneratedDeckResponse:
         dumped = response.model_dump()
         assert dumped["card_explanations"]["oid-1"]["summary"]
         assert dumped["card_explanations"]["oid-1"]["evidence"] == ["Roles: RAMP."]
+
+    def test_generated_deck_response_serializes_repair_blockers(self):
+        main_deck = [self._make_card(f"oid-{i}", f"Card {i}") for i in range(99)]
+        response = GeneratedDeckResponse(
+            deck_id="deck-005",
+            session_id="session-005",
+            commander=DeckCardSchema(**self._make_card("cmd-1", "Commander")),
+            main_deck=[DeckCardSchema(**c) for c in main_deck],
+            role_breakdown={},
+            quota_status=[],
+            package_breakdown=[],
+            warnings=[],
+            owned_count=50,
+            owned_percentage=0.5,
+            is_valid=True,
+            validation_errors=[],
+            upgrade_suggestions=[],
+            card_explanations={},
+            repair_blockers=[
+                RepairBlockerSchema(
+                    failure_type="quota_underfill",
+                    role="WIN_CONDITION",
+                    reason="no_candidate",
+                    detail="No unselected candidate can fill WIN_CONDITION.",
+                )
+            ],
+        )
+
+        dumped = response.model_dump()
+        assert dumped["repair_blockers"] == [
+            {
+                "failure_type": "quota_underfill",
+                "role": "WIN_CONDITION",
+                "package_id": None,
+                "oracle_id": None,
+                "reason": "no_candidate",
+                "detail": "No unselected candidate can fill WIN_CONDITION.",
+            }
+        ]
 
 
 class TestDeckExportSchemas:

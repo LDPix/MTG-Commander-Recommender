@@ -11,6 +11,7 @@ from app.recommendation.mana_base_rules import (
     is_c_only_land,
     is_fixing_land,
     is_mono_color,
+    is_primary_fixing_land,
     is_utility_land,
     land_produces_off_color_mana,
     utility_land_has_relevance,
@@ -74,6 +75,96 @@ def test_fixing_land_add_mana_any_color_variant() -> None:
 def test_reliquary_tower_not_a_fixing_land() -> None:
     # Reliquary Tower produces {C} and has "You have no maximum hand size" — not fixing
     assert is_fixing_land("Reliquary Tower", "You have no maximum hand size.\n{T}: Add {C}.") is False
+
+
+# ---------------------------------------------------------------------------
+# SC-MANA-008: Primary fixing land classification
+# ---------------------------------------------------------------------------
+
+def test_primary_fixing_land_identifies_command_and_rainbow_lands() -> None:
+    assert is_primary_fixing_land(
+        "Command Tower",
+        "{T}: Add one mana of any color in your commander's color identity.",
+        "Land",
+        ["B", "G"],
+    ) is True
+    assert is_primary_fixing_land(
+        "Exotic Orchard",
+        "{T}: Add one mana of any type that a land an opponent controls could produce.",
+        "Land",
+        ["B", "G"],
+    ) is True
+
+
+def test_primary_fixing_land_identifies_choose_type_lands() -> None:
+    assert is_primary_fixing_land(
+        "Unclaimed Territory",
+        "As this land enters, choose a creature type.\n{T}: Add one mana of any color. Spend this mana only to cast a creature spell of the chosen type.",
+        "Land",
+        ["B", "G"],
+    ) is True
+    assert is_primary_fixing_land(
+        "Temple of the Dragon Queen",
+        "As this land enters, you may reveal a Dragon card from your hand. As it enters, choose a color.\n{T}: Add one mana of the chosen color.",
+        "Land",
+        ["R", "G"],
+    ) is True
+
+
+def test_primary_fixing_land_identifies_pain_and_fetch_style_lands() -> None:
+    assert is_primary_fixing_land(
+        "Llanowar Wastes",
+        "{T}: Add {C}.\n{T}: Add {B} or {G}. Llanowar Wastes deals 1 damage to you.",
+        "Land",
+        ["B", "G"],
+    ) is True
+    assert is_primary_fixing_land(
+        "Misty Rainforest",
+        "{T}, Pay 1 life, Sacrifice this land: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle.",
+        "Land",
+        ["G", "U"],
+    ) is True
+
+
+def test_primary_fixing_land_is_not_utility_despite_choose_or_life_text() -> None:
+    assert is_utility_land(
+        "Unclaimed Territory",
+        "As this land enters, choose a creature type.\n{T}: Add one mana of any color. Spend this mana only to cast a creature spell of the chosen type.",
+        "Land",
+    ) is False
+    assert is_utility_land(
+        "Llanowar Wastes",
+        "{T}: Add {C}.\n{T}: Add {B} or {G}. Llanowar Wastes deals 1 damage to you.",
+        "Land",
+    ) is False
+
+
+def test_primary_fixing_land_kept_by_utility_relevance_gate() -> None:
+    assert utility_land_has_relevance(
+        "Gemstone Mine",
+        "Gemstone Mine enters the battlefield with three mining counters on it.\n{T}, Remove a mining counter from Gemstone Mine: Add one mana of any color.",
+        "Land",
+        synergy_score=0.0,
+        package_ids=[],
+        active_package_ids=set(),
+    ) is True
+
+
+def test_true_utility_land_still_requires_relevance() -> None:
+    assert is_primary_fixing_land(
+        "Scavenger Grounds",
+        "{T}: Add {C}.\n{2}, {T}, Sacrifice a Desert: Exile all graveyards.",
+        "Land",
+        ["B", "G"],
+    ) is False
+    assert utility_land_has_relevance(
+        "Scavenger Grounds",
+        "{T}: Add {C}.\n{2}, {T}, Sacrifice a Desert: Exile all graveyards.",
+        "Land",
+        synergy_score=0.0,
+        package_ids=[],
+        active_package_ids=set(),
+    ) is False
 
 
 def test_land_produces_off_color_mana_true_for_white_in_green_deck() -> None:
@@ -160,6 +251,15 @@ def test_command_tower_allowed_in_multicolor() -> None:
     card = _make_card("Command Tower", "T: Add one mana of any color in your commander's color identity.", [])
     # Multi-color: fixing lands are allowed
     assert _land_is_eligible(card, ["B", "G"]) is True
+
+
+def test_primary_fixing_land_still_excluded_from_mono_color_pool() -> None:
+    card = _make_card(
+        "Temple of the Dragon Queen",
+        "As this land enters, choose a color.\n{T}: Add one mana of the chosen color.",
+        [],
+    )
+    assert _land_is_eligible(card, ["G"]) is False
 
 
 def test_non_land_always_eligible() -> None:

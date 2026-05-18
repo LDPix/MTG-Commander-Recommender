@@ -25,6 +25,8 @@ class TestDeckGenerationAPI:
         data = resp.json()
         assert "deck_id" in data
         assert data["session_id"] == seeded_collection
+        assert "repair_blockers" in data
+        assert isinstance(data["repair_blockers"], list)
         assert data["generation_status"] in {"success", "failed_quality", "generated_with_collection_gap"}
         if data["generation_status"] == "failed_quality":
             assert any("Deck quality failure" in warning for warning in data["warnings"])

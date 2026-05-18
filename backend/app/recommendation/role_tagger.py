@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 
 from app.models.card import CardData
+from app.recommendation.mana_base_rules import is_primary_fixing_land
 from app.recommendation.role_taxonomy import CardRole, RoleTag
 
 
@@ -144,7 +145,8 @@ class RuleTagger:
             # or specifically note "commander's color identity"
             if not card.is_basic_land:
                 if (
-                    "commander's color identity" in combined_oracle.lower()
+                    is_primary_fixing_land(card.name, combined_oracle, primary_type_line)
+                    or "commander's color identity" in combined_oracle.lower()
                     or "any color" in combined_oracle.lower()
                     or "mana of any" in combined_oracle.lower()
                     or "color of your choice" in combined_oracle.lower()

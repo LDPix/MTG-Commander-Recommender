@@ -161,6 +161,74 @@ def test_fixture_provider_loads_edges(tmp_path) -> None:
     assert edges[0].weight == 0.75
 
 
+def test_synergy_edge_created_between_token_maker_and_sacrifice_outlet() -> None:
+    """TOKEN_MAKER and SACRIFICE_OUTLET are a COMPLEMENTARY_ROLE_PAIR — edge must exist."""
+    card_a = DeckCard(
+        oracle_id="card-token-maker",
+        name="Token Maker Card",
+        is_owned=True,
+        quantity=1,
+        roles=["TOKEN_MAKER"],
+        package_ids=[],
+        selection_reason="test",
+    )
+    card_b = DeckCard(
+        oracle_id="card-sacrifice-outlet",
+        name="Sacrifice Outlet Card",
+        is_owned=True,
+        quantity=1,
+        roles=["SACRIFICE_OUTLET"],
+        package_ids=[],
+        selection_reason="test",
+    )
+    graph = SynergyGraph()
+    graph.build(
+        candidate_cards=[card_a, card_b],
+        role_tags={},
+        provider=RoleTagSynergyProvider(),
+        commander_oracle_id="cmd-001",
+        color_identity=["B", "G"],
+    )
+    score_a = graph.get_synergy_score(card_a.oracle_id)
+    score_b = graph.get_synergy_score(card_b.oracle_id)
+    assert score_a > 0.0, "TOKEN_MAKER should have non-zero synergy with SACRIFICE_OUTLET"
+    assert score_b > 0.0, "SACRIFICE_OUTLET should have non-zero synergy with TOKEN_MAKER"
+
+
+def test_no_edge_between_two_token_makers_without_template_pairing() -> None:
+    """Two TOKEN_MAKERs are not in COMPLEMENTARY_ROLE_PAIRS and TOKEN_MAKER is not a density-benefit role."""
+    card_a = DeckCard(
+        oracle_id="card-tm-a",
+        name="Token Maker A",
+        is_owned=True,
+        quantity=1,
+        roles=["TOKEN_MAKER"],
+        package_ids=[],
+        selection_reason="test",
+    )
+    card_b = DeckCard(
+        oracle_id="card-tm-b",
+        name="Token Maker B",
+        is_owned=True,
+        quantity=1,
+        roles=["TOKEN_MAKER"],
+        package_ids=[],
+        selection_reason="test",
+    )
+    graph = SynergyGraph()
+    graph.build(
+        candidate_cards=[card_a, card_b],
+        role_tags={},
+        provider=RoleTagSynergyProvider(),
+        commander_oracle_id="cmd-001",
+        color_identity=["B", "G"],
+    )
+    score_a = graph.get_synergy_score(card_a.oracle_id)
+    score_b = graph.get_synergy_score(card_b.oracle_id)
+    assert score_a == 0.0, "TOKEN_MAKER should NOT have synergy with another TOKEN_MAKER"
+    assert score_b == 0.0, "TOKEN_MAKER should NOT have synergy with another TOKEN_MAKER"
+
+
 def test_graph_with_fixture_provider(tmp_path, candidate_pool: list[DeckCard], role_tags_all: dict[str, list[RoleTag]], meren: CardData) -> None:
     """Graph can be built using a FixtureSynergyProvider."""
     import json

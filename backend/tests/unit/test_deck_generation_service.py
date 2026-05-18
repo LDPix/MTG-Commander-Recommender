@@ -18,10 +18,12 @@ from app.recommendation.strategic_coherence import (
     StrategicCoherenceValidator,
 )
 from app.recommendation.quota_config import RoleQuota
+from app.recommendation.strategic_coherence import ACTIVE_PACKAGE_MIN_CARDS
 from app.services.deck_generation_service import (
     MAX_REPAIR_ITERATIONS,
     _build_deck_score_logs,
     _coherence_repair_pass,
+    _estimate_candidate_active_packages,
     _finalize_coherence_fail_closed,
     _finalize_quality_generation_status,
     _find_swap_target,
@@ -32,6 +34,7 @@ from app.services.deck_generation_service import (
     _quality_failure_reasons,
     _refresh_deck_derived_state,
     _repair_credit_quality_one,
+    quota_effectively_satisfied,
 )
 
 GRETA_FIXTURE = (
@@ -566,6 +569,139 @@ def test_failed_quality_response_explains_remaining_gaps() -> None:
     assert finalized.generation_status == "failed_quality"
     assert any("RAMP: credit 0.5" in warning for warning in finalized.warnings)
     assert any("off-plan" in warning for warning in finalized.warnings)
+
+
+def _quota_semantics_deck(
+    quota: QuotaStatus,
+    strategic_coherence: StrategicCoherenceReport | None,
+) -> GeneratedDeck:
+    commander = _make_commander()
+    return _deck_for_refresh([], commander).model_copy(
+        update={
+            "quota_status": [quota],
+            "strategic_coherence": strategic_coherence,
+            "is_valid": True,
+            "validation_errors": [],
+        }
+    )
+
+
+def _passing_coherence() -> StrategicCoherenceReport:
+    return StrategicCoherenceReport(
+        primary_plan="food-sacrifice",
+        confidence=0.8,
+        on_plan_count=20,
+        off_plan_count=0,
+        confidence_cap_reasons=[],
+    )
+
+
+def test_ramp_one_slot_credit_covered_gap_passes_quality() -> None:
+    quota = QuotaStatus(
+        role=CardRole.RAMP.value,
+        target_min=8,
+        target_max=10,
+        actual_count=7,
+        is_satisfied=False,
+        warning="RAMP: need 8–10, got 7 assigned slot(s) (underfilled)",
+        credit_sum=8.25,
+        credit_satisfied=True,
+    )
+    deck = _finalize_coherence_fail_closed(
+        _quota_semantics_deck(quota, _passing_coherence()),
+        packages=[],
+    )
+    finalized = _finalize_quality_generation_status(deck)
+
+    status = finalized.quota_status[0]
+    assert finalized.generation_status == "success"
+    assert status.actual_count == 7
+    assert status.effective_satisfied is True
+    assert status.count_credit_covered is True
+    assert not _quality_failure_reasons(finalized)
+
+
+def test_card_draw_credit_covered_gap_fails_when_coherence_capped() -> None:
+    quota = QuotaStatus(
+        role=CardRole.CARD_DRAW.value,
+        target_min=8,
+        target_max=12,
+        actual_count=7,
+        is_satisfied=False,
+        warning="CARD_DRAW: need 8–12, got 7 assigned slot(s) (underfilled)",
+        credit_sum=8.0,
+        credit_satisfied=True,
+    )
+    deck = _quota_semantics_deck(
+        quota,
+        StrategicCoherenceReport(
+            primary_plan="food-sacrifice",
+            confidence=0.35,
+            confidence_cap_reasons=["hard_quota_failure"],
+        ),
+    )
+
+    finalized = _finalize_quality_generation_status(deck)
+
+    assert finalized.generation_status == "failed_quality"
+    assert finalized.quota_status[0].effective_satisfied is False
+
+
+def test_spot_removal_two_slot_deficit_still_fails_with_credit() -> None:
+    quota = QuotaStatus(
+        role=CardRole.SPOT_REMOVAL.value,
+        target_min=5,
+        target_max=7,
+        actual_count=3,
+        is_satisfied=False,
+        warning="SPOT_REMOVAL: need 5–7, got 3 assigned slot(s) (underfilled)",
+        credit_sum=5.0,
+        credit_satisfied=True,
+    )
+    finalized = _finalize_quality_generation_status(
+        _quota_semantics_deck(quota, _passing_coherence())
+    )
+
+    assert finalized.generation_status == "failed_quality"
+    assert finalized.quota_status[0].effective_satisfied is False
+
+
+def test_win_condition_one_slot_deficit_still_fails_with_credit() -> None:
+    quota = QuotaStatus(
+        role=CardRole.WIN_CONDITION.value,
+        target_min=2,
+        target_max=5,
+        actual_count=1,
+        is_satisfied=False,
+        warning="WIN_CONDITION: need 2–5, got 1 assigned slot(s) (underfilled)",
+        credit_sum=2.0,
+        credit_satisfied=True,
+    )
+    finalized = _finalize_quality_generation_status(
+        _quota_semantics_deck(quota, _passing_coherence())
+    )
+
+    assert finalized.generation_status == "failed_quality"
+    assert finalized.quota_status[0].effective_satisfied is False
+
+
+def test_archetype_role_one_slot_deficit_still_fails_with_credit() -> None:
+    quota = QuotaStatus(
+        role=CardRole.TOKEN_MAKER.value,
+        target_min=3,
+        target_max=5,
+        actual_count=2,
+        is_satisfied=False,
+        warning="TOKEN_MAKER: need 3–5, got 2 assigned slot(s) (underfilled)",
+        credit_sum=3.0,
+        credit_satisfied=True,
+    )
+    finalized = _finalize_quality_generation_status(
+        _quota_semantics_deck(quota, _passing_coherence())
+    )
+
+    assert finalized.generation_status == "failed_quality"
+    assert quota_effectively_satisfied(finalized.quota_status[0], finalized.strategic_coherence) is False
 
 
 def test_refresh_deck_derived_state_uses_role_slots_after_repair() -> None:
@@ -1266,6 +1402,14 @@ def test_multi_pass_repair_stops_after_max_iterations() -> None:
     # Pool is exhausted after 10 repairs → SC-DECK-033 collection_gap, not failed_quality
     assert finalized.generation_status == "generated_with_collection_gap"
     assert any("collection_gap: WIN_CONDITION" in w for w in finalized.warnings)
+    assert any(
+        blocker.reason == "iteration_budget_exhausted"
+        for blocker in finalized.repair_blockers
+    )
+    assert any(
+        blocker.role == CardRole.WIN_CONDITION.value and blocker.reason == "no_candidate"
+        for blocker in finalized.repair_blockers
+    )
 
 
 def test_multi_pass_repair_exits_early_when_no_improving_move() -> None:
@@ -1301,6 +1445,12 @@ def test_multi_pass_repair_exits_early_when_no_improving_move() -> None:
     assert not any("quality repair" in w for w in result.warnings), "No repairs should be reported"
     assert _quality_failure_reasons(result), "Quality failures must still remain"
     assert {c.oracle_id for c in result.main_deck} == original_ids, "Deck must be unchanged"
+    assert any(
+        blocker.failure_type == "quota_underfill"
+        and blocker.role == CardRole.WIN_CONDITION.value
+        and blocker.reason == "no_candidate"
+        for blocker in result.repair_blockers
+    )
 
 
 def test_multi_pass_repair_noop_when_no_failures() -> None:
@@ -1685,11 +1835,15 @@ def test_credit_repair_skips_when_count_not_satisfied() -> None:
     assert result is None
 
 
-def test_credit_repair_noop_when_no_higher_credit_candidate() -> None:
-    """SC-DECK-032: returns None when no pool card has higher credit than the swap target."""
+def test_credit_repair_swaps_even_equal_credit_candidate() -> None:
+    """SC-DECK-041: swap fires even when pool candidate has the same credit as the deck card.
+
+    The old SC-DECK-032 code blocked swaps unless the candidate had strictly higher credit.
+    SC-DECK-041 removes that constraint: any unselected candidate triggers a swap.
+    """
     low_ramp = _make_deck_card("low-ramp", "Low Ramp", [CardRole.RAMP.value])
     forest = _make_deck_card("forest-basic", "Forest", [CardRole.LAND.value], quantity=98)
-    # Pool candidate also has credit=0.5 (not higher)
+    # Pool candidate has identical credit=0.5; swap still fires under new rules
     equal_ramp_cand = _make_deck_card("equal-ramp", "Equal Ramp", [CardRole.RAMP.value])
 
     quota_status = [
@@ -1717,7 +1871,11 @@ def test_credit_repair_noop_when_no_higher_credit_candidate() -> None:
     result = _repair_credit_quality_one(
         deck, selected_ids, [equal_ramp_cand], all_cards_lookup, quotas
     )
-    assert result is None
+    # SC-DECK-041: swap fires; equal-credit candidate replaces the deck card
+    assert result is not None
+    oracle_ids = [c.oracle_id for c in result.main_deck]
+    assert "equal-ramp" in oracle_ids
+    assert "low-ramp" not in oracle_ids
 
 
 def test_credit_repair_respects_quota_min() -> None:
@@ -1775,6 +1933,83 @@ def test_credit_repair_respects_quota_min() -> None:
     assert result is None
 
 
+def test_credit_shortfall_reports_credit_specific_repair_blocker() -> None:
+    """SC-DECK-043: unresolved credit gaps explain that no usable credit swap was found."""
+    commander = _make_commander()
+    dual_role = _make_deck_card(
+        "dual-role-credit",
+        "Dual Role Credit",
+        [CardRole.RAMP.value, CardRole.CARD_DRAW.value],
+    )
+    forest = _make_deck_card("forest-basic", "Forest", [CardRole.LAND.value], quantity=98)
+    high_ramp_cand = _make_deck_card(
+        "high-ramp-credit",
+        "High Ramp Credit",
+        [CardRole.RAMP.value],
+        synergy_score=0.8,
+        is_owned=True,
+    )
+
+    quota_status = [
+        QuotaStatus(
+            role=CardRole.RAMP.value,
+            target_min=1,
+            target_max=10,
+            actual_count=1,
+            is_satisfied=True,
+            credit_sum=0.5,
+            credit_satisfied=False,
+            credit_warning="RAMP: credit 0.5 < minimum 1",
+        ),
+        QuotaStatus(
+            role=CardRole.CARD_DRAW.value,
+            target_min=1,
+            target_max=5,
+            actual_count=1,
+            is_satisfied=True,
+            credit_satisfied=True,
+        ),
+    ]
+    quotas = [
+        RoleQuota(CardRole.RAMP, 1, 10),
+        RoleQuota(CardRole.CARD_DRAW, 1, 5),
+        RoleQuota(CardRole.LAND, 36, 99),
+    ]
+    deck = _make_credit_repair_deck(main_deck=[dual_role, forest], quota_status=quota_status)
+    all_cards_lookup = {
+        "test-cmd": commander,
+        "dual-role-credit": _make_card_data(
+            "dual-role-credit",
+            "Dual Role Credit",
+            oracle_text="Draw a card. Add {G}.",
+            cmc=2.0,
+        ),
+        "high-ramp-credit": _make_card_data(
+            "high-ramp-credit",
+            "High Ramp Credit",
+            oracle_text="Whenever you sacrifice a permanent, add {G}{G}.",
+        ),
+        "forest-basic": _forest_data(),
+    }
+
+    result = _multi_pass_quality_repair(
+        deck=deck,
+        commander=commander,
+        commander_tags=[],
+        all_cards_lookup=all_cards_lookup,
+        quotas=quotas,
+        enriched_candidate_pool=[high_ramp_cand],
+        packages=[],
+    )
+
+    assert any(
+        blocker.failure_type == "quota_credit"
+        and blocker.role == CardRole.RAMP.value
+        and blocker.reason == "credit_candidate_not_better"
+        for blocker in result.repair_blockers
+    )
+
+
 # ---------------------------------------------------------------------------
 # SC-DECK-033: Collection-gap status
 # ---------------------------------------------------------------------------
@@ -1829,6 +2064,13 @@ def test_pool_limited_win_condition_returns_collection_gap_not_failed_quality() 
         f"Expected collection_gap but got {finalized.generation_status!r}"
     )
     assert any("collection_gap: WIN_CONDITION" in w for w in finalized.warnings)
+    assert any(
+        blocker.failure_type == "quota_underfill"
+        and blocker.role == CardRole.WIN_CONDITION.value
+        and blocker.reason == "no_candidate"
+        and "WIN_CONDITION" in blocker.detail
+        for blocker in finalized.repair_blockers
+    )
     assert finalized.is_valid is True
 
 
@@ -1922,6 +2164,12 @@ def test_structural_win_condition_failure_still_returns_failed_quality() -> None
     assert finalized.generation_status != "generated_with_collection_gap", (
         f"Should not be collection_gap when pool has candidates: {finalized.generation_status!r}"
     )
+    assert any(
+        blocker.failure_type == "quota_underfill"
+        and blocker.role == CardRole.WIN_CONDITION.value
+        and blocker.reason == "no_safe_removal"
+        for blocker in finalized.repair_blockers
+    )
 
 
 def test_known_structural_failure_does_not_become_collection_gap() -> None:
@@ -2005,3 +2253,332 @@ def test_credit_repair_does_not_crash_when_two_gaps_are_equal() -> None:
     result = _repair_credit_quality_one(deck, {c.oracle_id for c in deck.main_deck}, [], {}, quotas)
     # No candidates available → returns None; the important thing is no TypeError
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# SC-DECK-041: Credit-repair multi-swap inner loop
+# ---------------------------------------------------------------------------
+
+def _ramp_deck_card(oracle_id: str, credit_text: str = "Add {G}.", cmc: float = 2.0) -> DeckCard:
+    """RAMP DeckCard with assigned_role set so _compute_role_credit_sum counts it."""
+    return DeckCard(
+        oracle_id=oracle_id,
+        name=oracle_id,
+        is_owned=False,
+        quantity=1,
+        roles=[CardRole.RAMP.value],
+        selection_reason="test",
+        assigned_role=CardRole.RAMP.value,
+    )
+
+
+def _ramp_pool_card(oracle_id: str) -> DeckCard:
+    """High-credit RAMP pool candidate with assigned_role so it is counted after _do_swap."""
+    return DeckCard(
+        oracle_id=oracle_id,
+        name=oracle_id,
+        is_owned=True,
+        quantity=1,
+        roles=[CardRole.RAMP.value],
+        selection_reason="test",
+        assigned_role=CardRole.RAMP.value,
+        synergy_score=0.5,
+    )
+
+
+def test_credit_repair_makes_multiple_swaps_when_needed() -> None:
+    """SC-DECK-041: inner loop exhausts all low-credit cards when pool has enough candidates."""
+    low1 = _ramp_deck_card("low-ramp-1")
+    low2 = _ramp_deck_card("low-ramp-2")
+    low3 = _ramp_deck_card("low-ramp-3")
+    forest = _make_deck_card("forest-basic", "Forest", [CardRole.LAND.value], quantity=96)
+
+    # credit=0.5 per card (oracle_text "Add {G}.", cmc=2); sum=1.5 < target_min=3
+    quota_status = [
+        QuotaStatus(
+            role=CardRole.RAMP.value,
+            target_min=3,
+            target_max=10,
+            actual_count=3,
+            is_satisfied=True,
+            credit_sum=1.5,
+            credit_satisfied=False,
+            credit_warning="RAMP: credit 1.5 < minimum 3",
+        )
+    ]
+    quotas = [RoleQuota(CardRole.RAMP, 3, 10), RoleQuota(CardRole.LAND, 36, 99)]
+    deck = _make_credit_repair_deck(main_deck=[low1, low2, low3, forest], quota_status=quota_status)
+
+    high1 = _ramp_pool_card("high-ramp-1")
+    high2 = _ramp_pool_card("high-ramp-2")
+    high3 = _ramp_pool_card("high-ramp-3")
+
+    # credit=1.0 via "whenever"; credit=0.5 via "Add {G}.", cmc=2
+    low_card_data = _make_card_data("_", "_", oracle_text="Add {G}.", cmc=2.0)
+    high_card_data = _make_card_data("_", "_", oracle_text="Whenever you tap a land, add {G}.", cmc=3.0)
+    all_cards_lookup = {
+        "low-ramp-1": low_card_data.model_copy(update={"id": "low-ramp-1", "oracle_id": "low-ramp-1", "name": "Low Ramp 1"}),
+        "low-ramp-2": low_card_data.model_copy(update={"id": "low-ramp-2", "oracle_id": "low-ramp-2", "name": "Low Ramp 2"}),
+        "low-ramp-3": low_card_data.model_copy(update={"id": "low-ramp-3", "oracle_id": "low-ramp-3", "name": "Low Ramp 3"}),
+        "high-ramp-1": high_card_data.model_copy(update={"id": "high-ramp-1", "oracle_id": "high-ramp-1", "name": "High Ramp 1"}),
+        "high-ramp-2": high_card_data.model_copy(update={"id": "high-ramp-2", "oracle_id": "high-ramp-2", "name": "High Ramp 2"}),
+        "high-ramp-3": high_card_data.model_copy(update={"id": "high-ramp-3", "oracle_id": "high-ramp-3", "name": "High Ramp 3"}),
+        "forest-basic": _forest_data(),
+        "test-cmd": _make_commander(),
+    }
+    selected_ids = {c.oracle_id for c in deck.main_deck}
+
+    result = _repair_credit_quality_one(deck, selected_ids, [high1, high2, high3], all_cards_lookup, quotas)
+
+    assert result is not None
+    result_ids = [c.oracle_id for c in result.main_deck]
+    assert "low-ramp-1" not in result_ids
+    assert "low-ramp-2" not in result_ids
+    assert "low-ramp-3" not in result_ids
+    assert "high-ramp-1" in result_ids
+    assert "high-ramp-2" in result_ids
+    assert "high-ramp-3" in result_ids
+
+
+def test_credit_repair_stops_when_credit_satisfied() -> None:
+    """SC-DECK-041: inner loop stops as soon as credit sum reaches target_min."""
+    low = _ramp_deck_card("low-ramp")
+    forest = _make_deck_card("forest-basic", "Forest", [CardRole.LAND.value], quantity=98)
+
+    # one card, credit=0.5; target_min=1; after one swap credit=1.0 >= 1.0 → stop
+    quota_status = [
+        QuotaStatus(
+            role=CardRole.RAMP.value,
+            target_min=1,
+            target_max=10,
+            actual_count=1,
+            is_satisfied=True,
+            credit_sum=0.5,
+            credit_satisfied=False,
+            credit_warning="RAMP: credit 0.5 < minimum 1",
+        )
+    ]
+    quotas = [RoleQuota(CardRole.RAMP, 1, 10), RoleQuota(CardRole.LAND, 36, 99)]
+    deck = _make_credit_repair_deck(main_deck=[low, forest], quota_status=quota_status)
+
+    high1 = _ramp_pool_card("high-ramp-1")
+    high2 = _ramp_pool_card("high-ramp-2")
+
+    all_cards_lookup = {
+        "low-ramp": _make_card_data("low-ramp", "Low Ramp", oracle_text="Add {G}.", cmc=2.0),
+        "high-ramp-1": _make_card_data("high-ramp-1", "High Ramp 1", oracle_text="Whenever you tap a land, add {G}.", cmc=3.0),
+        "high-ramp-2": _make_card_data("high-ramp-2", "High Ramp 2", oracle_text="Whenever you tap a land, add {G}.", cmc=3.0),
+        "forest-basic": _forest_data(),
+        "test-cmd": _make_commander(),
+    }
+    selected_ids = {c.oracle_id for c in deck.main_deck}
+
+    result = _repair_credit_quality_one(deck, selected_ids, [high1, high2], all_cards_lookup, quotas)
+
+    assert result is not None
+    result_ids = [c.oracle_id for c in result.main_deck]
+    assert "low-ramp" not in result_ids
+    assert "high-ramp-1" in result_ids
+    # Second candidate unused — loop stopped after credit was satisfied by swap 1
+    assert "high-ramp-2" not in result_ids
+
+
+def test_credit_repair_stops_when_pool_exhausted() -> None:
+    """SC-DECK-041: inner loop stops when no more pool candidates exist; returns partial improvement."""
+    low1 = _ramp_deck_card("low-ramp-1")
+    low2 = _ramp_deck_card("low-ramp-2")
+    low3 = _ramp_deck_card("low-ramp-3")
+    forest = _make_deck_card("forest-basic", "Forest", [CardRole.LAND.value], quantity=96)
+
+    # sum=1.5 < target_min=3; only 1 candidate → 1 swap → pool exhausted → stops
+    quota_status = [
+        QuotaStatus(
+            role=CardRole.RAMP.value,
+            target_min=3,
+            target_max=10,
+            actual_count=3,
+            is_satisfied=True,
+            credit_sum=1.5,
+            credit_satisfied=False,
+            credit_warning="RAMP: credit 1.5 < minimum 3",
+        )
+    ]
+    quotas = [RoleQuota(CardRole.RAMP, 3, 10), RoleQuota(CardRole.LAND, 36, 99)]
+    deck = _make_credit_repair_deck(main_deck=[low1, low2, low3, forest], quota_status=quota_status)
+
+    high1 = _ramp_pool_card("high-ramp-1")
+
+    low_data = _make_card_data("_", "_", oracle_text="Add {G}.", cmc=2.0)
+    high_data = _make_card_data("_", "_", oracle_text="Whenever you tap a land, add {G}.", cmc=3.0)
+    all_cards_lookup = {
+        "low-ramp-1": low_data.model_copy(update={"id": "low-ramp-1", "oracle_id": "low-ramp-1", "name": "Low 1"}),
+        "low-ramp-2": low_data.model_copy(update={"id": "low-ramp-2", "oracle_id": "low-ramp-2", "name": "Low 2"}),
+        "low-ramp-3": low_data.model_copy(update={"id": "low-ramp-3", "oracle_id": "low-ramp-3", "name": "Low 3"}),
+        "high-ramp-1": high_data.model_copy(update={"id": "high-ramp-1", "oracle_id": "high-ramp-1", "name": "High 1"}),
+        "forest-basic": _forest_data(),
+        "test-cmd": _make_commander(),
+    }
+    selected_ids = {c.oracle_id for c in deck.main_deck}
+
+    result = _repair_credit_quality_one(deck, selected_ids, [high1], all_cards_lookup, quotas)
+
+    assert result is not None
+    result_ids = [c.oracle_id for c in result.main_deck]
+    assert "high-ramp-1" in result_ids
+    # Two low-ramp cards remain (only 1 swap was possible)
+    low_remaining = [oid for oid in result_ids if oid.startswith("low-ramp")]
+    assert len(low_remaining) == 2
+
+
+def test_credit_repair_inner_cap_prevents_infinite_loop() -> None:
+    """SC-DECK-041: inner loop exits after at most 10 swaps even when credit never reaches target_min."""
+    # 11 low-credit deck cards; target_min=99 (unreachable); 11 pool candidates
+    # Cap=10 → exactly 10 swaps occur; 1 low-ramp card remains
+    low_cards = [_ramp_deck_card(f"low-ramp-{i}") for i in range(11)]
+    forest = _make_deck_card("forest-basic", "Forest", [CardRole.LAND.value], quantity=88)
+
+    quota_status = [
+        QuotaStatus(
+            role=CardRole.RAMP.value,
+            target_min=99,
+            target_max=110,
+            actual_count=11,
+            is_satisfied=True,
+            credit_sum=5.5,
+            credit_satisfied=False,
+            credit_warning="RAMP: credit 5.5 < minimum 99",
+        )
+    ]
+    quotas = [RoleQuota(CardRole.RAMP, 11, 110), RoleQuota(CardRole.LAND, 36, 99)]
+    deck = _make_credit_repair_deck(main_deck=low_cards + [forest], quota_status=quota_status)
+
+    pool_candidates = [_ramp_pool_card(f"high-ramp-{i}") for i in range(11)]
+
+    low_data = _make_card_data("_", "_", oracle_text="Add {G}.", cmc=2.0)
+    high_data = _make_card_data("_", "_", oracle_text="Whenever you tap a land, add {G}.", cmc=3.0)
+    all_cards_lookup = {
+        f"low-ramp-{i}": low_data.model_copy(update={"id": f"low-ramp-{i}", "oracle_id": f"low-ramp-{i}", "name": f"Low {i}"})
+        for i in range(11)
+    }
+    all_cards_lookup.update({
+        f"high-ramp-{i}": high_data.model_copy(update={"id": f"high-ramp-{i}", "oracle_id": f"high-ramp-{i}", "name": f"High {i}"})
+        for i in range(11)
+    })
+    all_cards_lookup["forest-basic"] = _forest_data()
+    all_cards_lookup["test-cmd"] = _make_commander()
+
+    selected_ids = {c.oracle_id for c in deck.main_deck}
+
+    result = _repair_credit_quality_one(deck, selected_ids, pool_candidates, all_cards_lookup, quotas)
+
+    assert result is not None
+    result_ids = [c.oracle_id for c in result.main_deck]
+    swapped_in = [oid for oid in result_ids if oid.startswith("high-ramp-")]
+    assert len(swapped_in) == 10  # exactly 10 swaps (inner cap)
+    low_remaining = [oid for oid in result_ids if oid.startswith("low-ramp-")]
+    assert len(low_remaining) == 1  # 1 low-ramp remains (was not swapped)
+
+
+# ---------------------------------------------------------------------------
+# SC-DECK-039: Plan-first deck generation — _estimate_candidate_active_packages
+# ---------------------------------------------------------------------------
+
+def _make_pkg_for_estimate(
+    package_id: str,
+    label: str,
+    card_oracle_ids: list[str],
+    top_roles: list[str],
+) -> PackageCluster:
+    return PackageCluster(
+        package_id=package_id,
+        label=label,
+        confidence=1.0,
+        card_oracle_ids=card_oracle_ids,
+        top_roles=top_roles,
+    )
+
+
+def test_estimate_excludes_irrelevant_packages() -> None:
+    """SC-DECK-039a: plan-irrelevant packages are excluded even if they have enough owned members."""
+    owned_ids = [f"card-{i}" for i in range(ACTIVE_PACKAGE_MIN_CARDS)]
+    non_owned_id = "card-extra"
+
+    pkg_a = _make_pkg_for_estimate(
+        "pkg-aristocrats",
+        "aristocrats package",
+        card_oracle_ids=owned_ids + [non_owned_id],
+        top_roles=["ARISTOCRATS_SYNERGY"],
+    )
+    pkg_b = _make_pkg_for_estimate(
+        "pkg-blink",
+        "blink package",
+        card_oracle_ids=owned_ids + [non_owned_id],
+        top_roles=["BLINK_SYNERGY"],
+    )
+
+    pool = [
+        DeckCard(oracle_id=oid, name=oid, is_owned=True, quantity=1, roles=[], selection_reason="test")
+        for oid in owned_ids
+    ]
+
+    result = _estimate_candidate_active_packages(
+        candidate_pool=pool,
+        packages=[pkg_a, pkg_b],
+        primary_plan="aristocrats",
+    )
+
+    assert "pkg-aristocrats" in result
+    assert "pkg-blink" not in result
+
+
+def test_estimate_excludes_underfilled_packages() -> None:
+    """SC-DECK-039a: packages with fewer than ACTIVE_PACKAGE_MIN_CARDS owned members are excluded."""
+    owned_ids = [f"card-{i}" for i in range(ACTIVE_PACKAGE_MIN_CARDS - 1)]
+
+    pkg = _make_pkg_for_estimate(
+        "pkg-underfilled",
+        "underfilled package",
+        card_oracle_ids=owned_ids + ["card-unowned"],
+        top_roles=["ARISTOCRATS_SYNERGY"],
+    )
+
+    pool = [
+        DeckCard(oracle_id=oid, name=oid, is_owned=True, quantity=1, roles=[], selection_reason="test")
+        for oid in owned_ids
+    ]
+    pool.append(
+        DeckCard(oracle_id="card-unowned", name="Unowned", is_owned=False, quantity=1, roles=[], selection_reason="test")
+    )
+
+    result = _estimate_candidate_active_packages(
+        candidate_pool=pool,
+        packages=[pkg],
+        primary_plan="aristocrats",
+    )
+
+    assert "pkg-underfilled" not in result
+
+
+def test_estimate_includes_all_plans_when_primary_plan_is_none() -> None:
+    """SC-DECK-039a: when primary_plan is None, plan filter is skipped for any package with enough owned members."""
+    owned_ids = [f"card-{i}" for i in range(ACTIVE_PACKAGE_MIN_CARDS)]
+
+    pkg = _make_pkg_for_estimate(
+        "pkg-any-plan",
+        "some package",
+        card_oracle_ids=owned_ids,
+        top_roles=["BLINK_SYNERGY"],
+    )
+
+    pool = [
+        DeckCard(oracle_id=oid, name=oid, is_owned=True, quantity=1, roles=[], selection_reason="test")
+        for oid in owned_ids
+    ]
+
+    result = _estimate_candidate_active_packages(
+        candidate_pool=pool,
+        packages=[pkg],
+        primary_plan=None,
+    )
+
+    assert "pkg-any-plan" in result

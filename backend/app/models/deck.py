@@ -38,6 +38,8 @@ class QuotaStatus(BaseModel):
     credit_sum: float = 0.0          # SC-DECK-013: sum of role_quality_credit() across cards
     credit_satisfied: bool = True    # True when credit_sum >= target_min
     credit_warning: str | None = None
+    effective_satisfied: bool = False
+    count_credit_covered: bool = False
 
 
 class PackageCluster(BaseModel):
@@ -84,6 +86,15 @@ class StrategicCoherenceReport(BaseModel):
     confidence_cap_reasons: list[str] = Field(default_factory=list)
 
 
+class RepairBlocker(BaseModel):
+    failure_type: str
+    role: str | None = None
+    package_id: str | None = None
+    oracle_id: str | None = None
+    reason: str
+    detail: str
+
+
 class GeneratedDeck(BaseModel):
     deck_id: str
     session_id: str
@@ -102,3 +113,4 @@ class GeneratedDeck(BaseModel):
     card_explanations: dict[str, CardExplanation] = Field(default_factory=dict)
     score_logs: list[ScoreLog] = Field(default_factory=list)
     strategic_coherence: StrategicCoherenceReport | None = None
+    repair_blockers: list[RepairBlocker] = Field(default_factory=list)

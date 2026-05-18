@@ -1,6 +1,8 @@
 """SC-DECK-014: Package density enforcement for the final deck."""
 from __future__ import annotations
 
+from collections import defaultdict
+
 from app.models.deck import DeckCard, PackageCluster
 
 # Minimum package member count required in the final deck to consider a
@@ -118,6 +120,37 @@ COMPOSITION_OUTCOME_ROLES: frozenset[str] = frozenset({
 })
 
 
+PACKAGE_COMPONENT_TEMPLATES: dict[str, dict[str, int]] = {
+    "TOKEN_MAKER": {
+        "TOKEN_MAKER": 3,
+        "SACRIFICE_OUTLET": 1,
+    },
+    "ARISTOCRATS_SYNERGY": {
+        "SACRIFICE_OUTLET": 2,
+        "ARISTOCRATS_SYNERGY": 3,
+        "TOKEN_MAKER": 1,
+    },
+    "LANDFALL_SYNERGY": {
+        "LANDFALL_SYNERGY": 2,
+        "RAMP": 2,
+    },
+    "BLINK_SYNERGY": {
+        "BLINK_SYNERGY": 2,
+    },
+    "SACRIFICE_OUTLET": {
+        "SACRIFICE_OUTLET": 2,
+        "TOKEN_MAKER": 1,
+    },
+    "SPELLSLINGER_SYNERGY": {
+        "SPELLSLINGER_SYNERGY": 3,
+        "CARD_DRAW": 2,
+    },
+    "RECURSION": {
+        "RECURSION": 2,
+    },
+}
+
+
 def package_density_threshold(package: PackageCluster) -> int:
     """Return the minimum deck-member count for this package to be active."""
     top_role = package.top_roles[0] if package.top_roles else ""
@@ -227,7 +260,7 @@ def package_activation_status(
             return PACKAGE_STATUS_INACTIVE_UNRELATED
         if not package_relevant_to_plan(package, primary_plan):
             return PACKAGE_STATUS_INACTIVE_UNRELATED
-    if not package_has_viable_composition(main_deck, package):
+    if not package_meets_component_template(main_deck, package):
         return PACKAGE_STATUS_INACTIVE_BAD_COMPOSITION
     return PACKAGE_STATUS_ACTIVE
 
@@ -285,22 +318,37 @@ def package_relevant_to_plan(package: PackageCluster, primary_plan: str) -> bool
     return bool(top_roles.intersection(plan_roles))
 
 
+def package_meets_component_template(
+    main_deck: list[DeckCard],
+    package: PackageCluster,
+) -> bool:
+    if not package.top_roles:
+        return True
+
+    deck_by_id = {c.oracle_id: c for c in main_deck}
+    role_counts: dict[str, int] = defaultdict(int)
+    for oid in package.card_oracle_ids:
+        card = deck_by_id.get(oid)
+        if card is not None:
+            for role in card.roles:
+                role_counts[role] += 1
+
+    for top_role in package.top_roles:
+        template = PACKAGE_COMPONENT_TEMPLATES.get(top_role)
+        if template is None:
+            return True  # role with no template = no component requirement
+        if all(role_counts.get(r, 0) >= count for r, count in template.items()):
+            return True  # this template is satisfied
+
+    return False
+
+
 def package_has_viable_composition(
     main_deck: list[DeckCard],
     package: PackageCluster,
 ) -> bool:
-    deck_by_id = {card.oracle_id: card for card in main_deck}
-    selected_roles: set[str] = set()
-    for oracle_id in package.card_oracle_ids:
-        card = deck_by_id.get(oracle_id)
-        if card is not None:
-            selected_roles.update(card.roles)
-
-    if len(selected_roles) < 2:
-        return False
-    has_enabler = bool(selected_roles.intersection(COMPOSITION_ENABLER_ROLES))
-    has_outcome = bool(selected_roles.intersection(COMPOSITION_OUTCOME_ROLES))
-    return has_enabler and has_outcome
+    """Deprecated: use package_meets_component_template()."""
+    return package_meets_component_template(main_deck, package)
 
 
 def _package_text(package: PackageCluster) -> str:
